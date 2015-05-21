@@ -1,73 +1,70 @@
 #include <iostream>
 #include <string>
 #include <sstream>
-#include <regex>
+#include "message.h"
 using namespace std;
 
-void ProcessReceivedMsg(char buffer[SIZE])
+void ProcessReceivedMsg(char buffer[512])
 {
     string str(buffer);
     stringstream iss(str);
     string line;
+    stringstream line_iss(line);
     while (getline(iss, line))
     {
         if (line == "seat/ ")
         {
-            cout << "===============receive seat message" << endl; 
-        }
-        else
-        {
-        
-        }
-
-
-        string first_token;
-        string second_token;
-        int pid;
-        int jetton;
-        int money;
-        cout << "line: " << line << endl;
-
-        if (line.substr(0, 4) == "seat" || line.substr(0, 4) == "/sea")
-        {
-            // do nothing
-        }
-        else if (line.substr(0, 4) == "butt")
-        {
-            stringstream line_iss(line);
-            // button
+            
+            string first_token;
+            string second_token;
+            int pid;
+            int jetton;
+            int money;
+            // read button line
+            getline(iss, line);
+            line_iss.str(line);
             line_iss >> first_token >> pid >> jetton >> money;
 
-            cout << pid << " " << jetton << " " << money << endl;
-        }
-        else if (line.substr(0, 4) == "smal")
-        {
-            stringstream line_iss(line);
-            // small blind
+            cout << "I am button " << pid << " " << jetton << " " << money << endl;
+            // read small blind line
+            getline(iss, line);
+            line_iss.str(line);
             line_iss >> first_token >> second_token >> pid >> jetton >> money;
+            cout << "I am small blind " << pid << " " << jetton << " " << money << endl;
+            // read next lines if any 
+            while (1)
+            {
+                // end line break;
+                getline(iss, line);
+                if (line == "/seat ")
+                {
+                    cout << "i am end seat" << endl;
+                    
+                    break;
+                }
+                // big blind line
+                else if (line.substr(0, 3) == "big")
+                {
+                     
+                    line_iss.str(line);
+                    line_iss >> first_token >> second_token >> pid >> jetton >> money;
+                    cout << "i am big blind " << pid << " " << jetton << " " << money << endl;
+                }
+                else
+                {
+                    line_iss.str(line);
+                    line_iss >> pid >> jetton >> money;
+                    cout << "i am others " << pid << " " << jetton << " " << money << endl;
+                }
+            }
 
-            cout << pid << " " << jetton << " " << money << endl;
-        }
-        else if (line.substr(0, 4) == "big ")
-        {
 
-            stringstream line_iss(line);
-            // big blind
-            line_iss >> first_token >> second_token >>  pid >> jetton >> money;
-
-
-            cout << pid << " " << jetton << " " << money << endl;
         }
         else
         {
-
-            stringstream line_iss(line);
-            // other players
-            line_iss >> pid >> jetton >> money;
-
-            cout << pid << " " << jetton << " " << money << endl;
+            // do nothing 
         }
 
     }
-    return 0;
+    return;
 }

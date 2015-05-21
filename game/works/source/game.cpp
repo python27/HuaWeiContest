@@ -11,6 +11,7 @@
 #include <iostream>
 #include <string>
 #include <sstream>
+#include "message.h"
 using namespace std; 
 
 #define SIZE 512
@@ -96,23 +97,11 @@ int main(int argc, char *argv[])
             break;
         }
 
-        printf("Received Data: %s", server_msg);
+        //printf("Received Data: %s", server_msg);
 
-
-        string str(server_msg);
-        stringstream iss(str);
-        string line;
-        while (getline(iss, line))
-        {
-            if (line == "seat/ ")
-            {
-                cout << "===============receive seat message" << endl; 
-            }
-            else
-            {
-            
-            }           
-        }
+        printf("I am handling message:\n");
+        
+        ProcessReceivedMsg(server_msg);
 
         
         memset(server_msg, 0, SIZE);
