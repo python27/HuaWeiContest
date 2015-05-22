@@ -14,12 +14,15 @@
 #include "message.h"
 using namespace std; 
 
-#define SIZE 512
+#define SIZE 1024
+
+char client_msg[SIZE];
+char server_msg[SIZE];
+int sockfd; 
 
 int main(int argc, char *argv[])
 {
-    char client_msg[SIZE];
-    char server_msg[SIZE]; 
+
 
     if (argc != 6)
     {
@@ -46,7 +49,7 @@ int main(int argc, char *argv[])
     client_addr.sin_port = htons(CLIENT_PORT);
 
     // create socket descriptor
-    int sockfd = socket(AF_INET, SOCK_STREAM, 0); 
+    sockfd = socket(AF_INET, SOCK_STREAM, 0); 
     if (sockfd < 0)
     {
         printf("\n Error : Could not create socket \n");
@@ -88,8 +91,10 @@ int main(int argc, char *argv[])
 
     // receive msg from server
     int recv_length = 0;
+    int process_msg_flag = 0;
     while (1)
     {
+        memset(server_msg, 0, SIZE);
         recv_length = recv(sockfd, server_msg, SIZE, 0);
         if (recv_length < 0)
         {
@@ -97,17 +102,27 @@ int main(int argc, char *argv[])
             break;
         }
 
-        //printf("Received Data: %s", server_msg);
+        printf(">>>>>>>>>>>> Received Data start <<<<<<<<<<<<<<\n");
+        printf("%s", server_msg);
+        printf(">>>>>>>>>>>> Received Data end <<<<<<<<<<<<<<\n");
 
         printf("I am handling message:\n");
         
-        ProcessReceivedMsg(server_msg);
-
+        process_msg_flag = ProcessReceivedMsg(server_msg);
         
-        memset(server_msg, 0, SIZE);
+        // game has been over, sock has been closed
+        if (process_msg_flag == 1)
+        {
+            break;
+        }      
     }
 
-    
-    close(sockfd);
+    // game is not over, remember close socket
+    if (process_msg_flag == 0)
+    {
+        close(sockfd);
+    }
+
+
     return 0;
 }
