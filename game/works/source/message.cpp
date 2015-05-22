@@ -12,6 +12,7 @@
 #include <string>
 #include <sstream>
 #include "message.h"
+#include "global_struct.h"
 using namespace std;
 
 #define BUF_SIZE 1024
@@ -19,6 +20,9 @@ using namespace std;
 /* global variable start */
 extern char client_msg[BUF_SIZE];
 extern int sockfd;
+extern MyCard g_common_cards[5];
+extern int g_current_common_cards_num;
+extern MyCard g_player_cards[2];
 /* global variable end */
 
 

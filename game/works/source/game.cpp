@@ -12,13 +12,19 @@
 #include <string>
 #include <sstream>
 #include "message.h"
+#include "global_struct.h"
 using namespace std; 
 
 #define SIZE 1024
 
+/*** Define global variables ***/
 char client_msg[SIZE];
 char server_msg[SIZE];
 int sockfd; 
+MyCard g_common_cards[5];               // five common cards
+int g_current_common_cards_num = 0;     // the number of current common cards
+MyCard g_player_cards[2];               // my two cards
+
 
 int main(int argc, char *argv[])
 {
