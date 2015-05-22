@@ -45,11 +45,14 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
             line_iss.str(line);
             line_iss >> first_token >> pid >> jetton >> money;
 
+            //cout << "receive >>>>>>>>>>>>" << "button:" << pid << " " << jetton << " " << money << endl;
+
             // read small blind line
             getline(iss, line);
             line_iss.clear();
             line_iss.str(line);
             line_iss >> first_token >> second_token >> pid >> jetton >> money;
+            //cout << "receive >>>>>>>>>>>>" << "small blind:" << pid << " " << jetton << " " << money<< endl;
             // read next lines if any 
             while (1)
             {
@@ -57,7 +60,6 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
                 getline(iss, line);
                 if (line == "/seat ")
                 {
-                    
                     break;
                 }
                 // big blind line
@@ -66,12 +68,15 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
                     line_iss.clear(); 
                     line_iss.str(line);
                     line_iss >> first_token >> second_token >> pid >> jetton >> money;
+            //cout << "receive >>>>>>>>>>>>" << "big blind:" << pid << " " << jetton << " " << money << endl;
                 }
                 else
                 {
                     line_iss.clear();
                     line_iss.str(line);
                     line_iss >> pid >> jetton >> money;
+                    
+                    //cout << "receive >>>>>>>>>>>>" << "other player:" << pid << " " << jetton << " "<<  money << endl;
                 }
             }
 
@@ -91,19 +96,22 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
         /* hold cards message */
         else if (line == "hold/ ")
         {
-            string color; char point;
+            string color; string point;
             
             // hold first card
             getline(iss, line);
             line_iss.clear(); 
             line_iss.str(line);
             line_iss >> color >> point;
+            //cout << "receive >>>>>>>>>>>>" <<"hold first card:" << color << " " << point << endl;
 
             // hold second card
             getline(iss, line);
             line_iss.clear(); 
             line_iss.str(line);
             line_iss >> color >> point;
+
+            //cout << "receive >>>>>>>>>>>>" <<"hold second card:" << color << " " << point << endl;
             
             // hold message end
             getline(iss, line);
@@ -125,6 +133,8 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
                     line_iss.clear();
                     line_iss.str(line);
                     line_iss >> total_str >> pot_str >> num;
+
+                    //cout << "receive >>>>>>>>>>>>" <<"inquire total:" << pot_str << " " << num << endl;
                 }
                 else
                 {
@@ -133,6 +143,7 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
                     line_iss.clear();
                     line_iss.str(line);
                     line_iss >> pid >> jetton >> money >> bet >> action;
+                    //cout << "receive >>>>>>>>>>>>" <<"inquire others:" << pid << " " << jetton << " " <<  money << " " << bet << " " << action << endl;
                 }
             }
 
@@ -146,22 +157,25 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
         else if (line == "flop/ ")
         {
             string color;
-            char point;
+            string point;
             // first card
             getline(iss, line);
             line_iss.clear(); 
             line_iss.str(line);
             line_iss >> color >> point;
+            //cout << "common card 1:" << color << " " << point << endl;
             // second card
             getline(iss, line);
             line_iss.clear(); 
             line_iss.str(line);
             line_iss >> color >> point;
+            //cout << "common card 2:" << color << " " << point << endl;
             // third card
             getline(iss, line);
             line_iss.clear();     
             line_iss.str(line);
             line_iss >> color >> point;
+            //cout << "common card 3:" << color << " " << point << endl;
             // end messge
             getline(iss, line);
 
@@ -170,21 +184,23 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
         else if (line == "turn/ ")
         {
             string color;
-            char point;
+            string point;
             getline(iss, line);
             line_iss.clear(); 
             line_iss.str(line);
             line_iss >> color >> point;
+            //cout << "common card 4:" << color << " " << point << endl;
             getline(iss, line);
         }
         else if (line == "river/ ")
         {
             string color;
-            char point;
+            string point;
             getline(iss, line);
             line_iss.clear(); 
             line_iss.str(line);
             line_iss >> color >> point;
+            cout << "common card 5:" << color << " " << point << endl;
             getline(iss, line);
         }
         else if (line == "showdown/ ")
@@ -199,6 +215,8 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
                 line_iss.clear(); 
                 line_iss.str(line);
                 line_iss >> color >> point;
+
+                //cout << "showdown common card "  << i + 1 << ":"<< color << " " << point << endl;
             }
             // common end
             getline(iss, line);
@@ -216,11 +234,12 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
                     string rank_str;
                     int pid;
                     string color1, color2;
-                    char point1, point2;
+                    string point1, point2;
                     string nut_hand;
                     line_iss.clear();
                     line_iss.str(line);
-                    line_iss >> pid >> color1 >> point1 >> color2 >> point2 >> nut_hand;
+                    line_iss >> rank_str >> pid >> color1 >> point1 >> color2 >> point2 >> nut_hand;
+                    //cout << "showdown rank:" << pid << " " << color1 << " " << color2 << " " << point2 << " " << nut_hand << endl;
 
                 }
             }
@@ -237,10 +256,12 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
                 }
                 else
                 {
+                    string comma_str;
                     int pid, num;
                     line_iss.clear();
                     line_iss.str(line);
-                    line_iss >> pid >> num; 
+                    line_iss >> pid >> comma_str >> num; 
+                    //cout << "pot win:" << pid << " " << num << endl;
                 }
             }
         }
