@@ -41,42 +41,37 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
             int money;
             // read button line
             getline(iss, line);
-            cout << "receive button line: " << line << endl;
+            line_iss.clear();
             line_iss.str(line);
             line_iss >> first_token >> pid >> jetton >> money;
-            cout << "I am button " << pid << " " << jetton << " " << money << endl;
 
             // read small blind line
             getline(iss, line);
-            cout << "receive small blind line:" << line << endl;
+            line_iss.clear();
             line_iss.str(line);
             line_iss >> first_token >> second_token >> pid >> jetton >> money;
-            cout << "I am small blind " << pid << " " << jetton << " " << money << endl;
             // read next lines if any 
             while (1)
             {
                 // end line break;
                 getline(iss, line);
-                cout << "receive seat line: " << line << endl;
                 if (line == "/seat ")
                 {
-                    cout << "i am end seat" << endl;
                     
                     break;
                 }
                 // big blind line
                 else if (line.substr(0, 3) == "big")
                 {
-                     
+                    line_iss.clear(); 
                     line_iss.str(line);
                     line_iss >> first_token >> second_token >> pid >> jetton >> money;
-                    cout << "i am big blind " << pid << " " << jetton << " " << money << endl;
                 }
                 else
                 {
+                    line_iss.clear();
                     line_iss.str(line);
                     line_iss >> pid >> jetton >> money;
-                    cout << "I am other player " << pid << " " << jetton << " " << money << endl;
                 }
             }
 
@@ -99,12 +94,14 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
             string color; char point;
             
             // hold first card
-            getline(iss, line); 
+            getline(iss, line);
+            line_iss.clear(); 
             line_iss.str(line);
             line_iss >> color >> point;
 
             // hold second card
-            getline(iss, line); 
+            getline(iss, line);
+            line_iss.clear(); 
             line_iss.str(line);
             line_iss >> color >> point;
             
@@ -125,6 +122,7 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
                 {
                     string total_str, pot_str;
                     int num;
+                    line_iss.clear();
                     line_iss.str(line);
                     line_iss >> total_str >> pot_str >> num;
                 }
@@ -132,6 +130,7 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
                 {
                     int pid, jetton, money, bet;
                     string action;
+                    line_iss.clear();
                     line_iss.str(line);
                     line_iss >> pid >> jetton >> money >> bet >> action;
                 }
@@ -149,15 +148,18 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
             string color;
             char point;
             // first card
-            getline(iss, line); 
+            getline(iss, line);
+            line_iss.clear(); 
             line_iss.str(line);
             line_iss >> color >> point;
             // second card
-            getline(iss, line); 
+            getline(iss, line);
+            line_iss.clear(); 
             line_iss.str(line);
             line_iss >> color >> point;
             // third card
-            getline(iss, line); 
+            getline(iss, line);
+            line_iss.clear();     
             line_iss.str(line);
             line_iss >> color >> point;
             // end messge
@@ -169,7 +171,8 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
         {
             string color;
             char point;
-            getline(iss, line); 
+            getline(iss, line);
+            line_iss.clear(); 
             line_iss.str(line);
             line_iss >> color >> point;
             getline(iss, line);
@@ -178,7 +181,8 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
         {
             string color;
             char point;
-            getline(iss, line); 
+            getline(iss, line);
+            line_iss.clear(); 
             line_iss.str(line);
             line_iss >> color >> point;
             getline(iss, line);
@@ -191,7 +195,8 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
             {
                 // five common message
                 string color; char point;
-                getline(iss, line); 
+                getline(iss, line);
+                line_iss.clear(); 
                 line_iss.str(line);
                 line_iss >> color >> point;
             }
@@ -213,6 +218,7 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
                     string color1, color2;
                     char point1, point2;
                     string nut_hand;
+                    line_iss.clear();
                     line_iss.str(line);
                     line_iss >> pid >> color1 >> point1 >> color2 >> point2 >> nut_hand;
 
@@ -232,6 +238,7 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
                 else
                 {
                     int pid, num;
+                    line_iss.clear();
                     line_iss.str(line);
                     line_iss >> pid >> num; 
                 }
