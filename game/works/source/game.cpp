@@ -108,7 +108,7 @@ int main(int argc, char *argv[])
             break;
         }
 
-        printf(">>>>>>>>>>>> Received Data start <<<<<<<<<<<<<<\n");
+        printf("\n\n>>>>>>>>>>>> Received Data start <<<<<<<<<<<<<<\n");
         printf("%s", server_msg);
         printf(">>>>>>>>>>>> Received Data end <<<<<<<<<<<<<<\n");
 

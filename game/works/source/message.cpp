@@ -11,6 +11,8 @@
 #include <iostream>
 #include <string>
 #include <sstream>
+#include <algorithm>
+#include <utility>
 #include "message.h"
 #include "global_struct.h"
 using namespace std;
@@ -25,6 +27,98 @@ extern int g_current_common_cards_num;
 extern MyCard g_player_cards[2];
 /* global variable end */
 
+MyColor toMyColor(const string& color)
+{
+    MyColor ret;
+    if (color == "SPADES")
+        ret = SPADES;
+    else if (color == "HEARTS")
+        ret = HEARTS;
+    else if (color == "CLUBS")
+        ret = CLUBS;
+    else if (color == "DIAMONDS")
+        ret = DIAMONDS;
+    else
+        ;
+    return ret;
+}
+int toPoint(const string& point)
+{
+    int ret = -1;
+    if (point == "10") return 10;
+    char ch = point[0];
+    switch(ch)
+    {
+        case 'J': ret = 11; break;
+        case 'Q': ret = 12; break;
+        case 'K': ret = 13; break;
+        case 'A': ret = 14; break;
+        default:  ret = ch - '0'; break;
+    }
+    return ret;
+}
+
+void ActionStrategy()
+{
+    /******** preflop, hand cards *********/
+    if (g_current_common_cards_num == 0)
+    {
+        int card1 = g_player_cards[0].m_point;
+        int card2 = g_player_cards[1].m_point;
+        if (card1 > card2) swap(card1, card2);
+        // group 1: premium
+        if ( (card1 == 14 && card2 == 14) ||
+             (card1 == 13 && card2 == 13) )
+        {
+            memset(client_msg, 0, BUF_SIZE);
+            sprintf(client_msg, "all_in \n");
+            send(sockfd, client_msg, strlen(client_msg), 0); 
+        }
+        // group 2: strong
+        else if ( (card1 == 13 && card2 == 14) ||
+                  (card1 == 12 && card2 == 12) ||
+                  (card1 == 11 && card2 == 11) )
+        {
+            memset(client_msg, 0, BUF_SIZE);
+            sprintf(client_msg, "all_in \n");
+            send(sockfd, client_msg, strlen(client_msg), 0); 
+        }
+        // group 3: good
+        else if ( (card1 == 12 && card2 == 14) ||
+                  (card1 == 10 && card2 == 10) ||
+                  (card1 == 9  && card2 == 9)  ||
+                  (card1 == 8  && card2 == 8) )
+        {
+            memset(client_msg, 0, BUF_SIZE);
+            sprintf(client_msg, "all_in \n");
+            send(sockfd, client_msg, strlen(client_msg), 0); 
+        }
+        // others
+        else
+        {
+            memset(client_msg, 0, BUF_SIZE);
+            sprintf(client_msg, "all_in \n");
+            send(sockfd, client_msg, strlen(client_msg), 0); 
+        }
+        return;
+    }
+    /********* 3 flop cards round ********/
+    else if (g_current_common_cards_num == 3)
+    {
+        return; 
+    }
+    /********* turn card round *******/
+    else if (g_current_common_cards_num == 4)
+    {
+        return; 
+    }
+    /********* river card round *********/
+    else if (g_current_common_cards_num == 5)
+    {
+        return; 
+    }
+    return;
+}
 
 int ProcessReceivedMsg(char buffer[BUF_SIZE])
 {
@@ -107,7 +201,9 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
             line_iss.clear(); 
             line_iss.str(line);
             line_iss >> color >> point;
-            //cout << "receive >>>>>>>>>>>>" <<"hold first card:" << color << " " << point << endl;
+            
+            g_player_cards[0].m_color = toMyColor(color);
+            g_player_cards[0].m_point = toPoint(point);
 
             // hold second card
             getline(iss, line);
@@ -115,10 +211,15 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
             line_iss.str(line);
             line_iss >> color >> point;
 
-            //cout << "receive >>>>>>>>>>>>" <<"hold second card:" << color << " " << point << endl;
+            g_player_cards[1].m_color = toMyColor(color);
+            g_player_cards[1].m_point = toPoint(point);
             
+            sort(g_player_cards, g_player_cards + 2);
+            g_current_common_cards_num = 0;
+
             // hold message end
             getline(iss, line);
+
         }
         /* inquire message */
         else if (line == "inquire/ ")
@@ -151,10 +252,14 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
                 }
             }
 
+
             // send action message
-            memset(client_msg, 0, BUF_SIZE);
-            sprintf(client_msg, "all_in \n");
-            send(sockfd, client_msg, strlen(client_msg), 0); 
+            //memset(client_msg, 0, BUF_SIZE);
+            //sprintf(client_msg, "all_in \n");
+            //send(sockfd, client_msg, strlen(client_msg), 0); 
+            cout << "start action " << endl;
+            ActionStrategy();
+            cout << "end action "  << endl;
             
         }
         /* flop message */
@@ -162,24 +267,37 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
         {
             string color;
             string point;
+
             // first card
             getline(iss, line);
             line_iss.clear(); 
             line_iss.str(line);
             line_iss >> color >> point;
-            //cout << "common card 1:" << color << " " << point << endl;
+
+            g_common_cards[0].m_color = toMyColor(color);
+            g_common_cards[0].m_point = toPoint(point);
+
             // second card
             getline(iss, line);
             line_iss.clear(); 
             line_iss.str(line);
             line_iss >> color >> point;
-            //cout << "common card 2:" << color << " " << point << endl;
+
+            g_common_cards[1].m_color = toMyColor(color);
+            g_common_cards[1].m_point = toPoint(point);
+
             // third card
             getline(iss, line);
             line_iss.clear();     
             line_iss.str(line);
             line_iss >> color >> point;
-            //cout << "common card 3:" << color << " " << point << endl;
+
+            g_common_cards[2].m_color = toMyColor(color);
+            g_common_cards[2].m_point = toPoint(point);
+
+            sort(g_common_cards, g_common_cards + 3);
+            g_current_common_cards_num = 3;
+
             // end messge
             getline(iss, line);
 
@@ -193,7 +311,13 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
             line_iss.clear(); 
             line_iss.str(line);
             line_iss >> color >> point;
-            //cout << "common card 4:" << color << " " << point << endl;
+            
+            g_common_cards[3].m_color = toMyColor(color);
+            g_common_cards[3].m_point = toPoint(point);
+
+            sort(g_common_cards, g_common_cards + 4);
+            g_current_common_cards_num = 4;
+
             getline(iss, line);
         }
         else if (line == "river/ ")
@@ -204,7 +328,13 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
             line_iss.clear(); 
             line_iss.str(line);
             line_iss >> color >> point;
-            cout << "common card 5:" << color << " " << point << endl;
+
+            g_common_cards[4].m_color = toMyColor(color);
+            g_common_cards[4].m_point = toPoint(point);
+            
+            sort(g_common_cards, g_common_cards + 5);
+            g_current_common_cards_num = 5;
+
             getline(iss, line);
         }
         else if (line == "showdown/ ")
@@ -214,13 +344,11 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
             for (int i = 0; i < 5; ++i)
             {
                 // five common message
-                string color; char point;
+                string color; string point;
                 getline(iss, line);
                 line_iss.clear(); 
                 line_iss.str(line);
                 line_iss >> color >> point;
-
-                //cout << "showdown common card "  << i + 1 << ":"<< color << " " << point << endl;
             }
             // common end
             getline(iss, line);
@@ -243,7 +371,6 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
                     line_iss.clear();
                     line_iss.str(line);
                     line_iss >> rank_str >> pid >> color1 >> point1 >> color2 >> point2 >> nut_hand;
-                    //cout << "showdown rank:" << pid << " " << color1 << " " << color2 << " " << point2 << " " << nut_hand << endl;
 
                 }
             }
