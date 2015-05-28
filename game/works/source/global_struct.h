@@ -1,5 +1,7 @@
 #ifndef GLOBAL_STRUCT_INCLUDE_H_
 #define GLOBAL_STRUCT_INCLUDE_H_
+#include <vector>
+#include <string>
 
 enum MyColor
 {
@@ -42,6 +44,29 @@ public:
         {
             return m_color < other.m_color;
         }
+    }
+};
+
+struct InquireInfo
+{
+    int m_pid;
+    int m_jetton;
+    int m_money;
+    int m_bet;
+    std::string m_action;
+};
+
+struct SeatInfo
+{
+    int m_islive;
+    int m_pid;
+    int m_jetton;
+    int m_money;
+    std::vector<int> m_bets;
+
+    ~SeatInfo()
+    {
+        m_bets.clear();
     }
 };
 

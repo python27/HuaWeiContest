@@ -24,6 +24,7 @@ int sockfd;
 MyCard g_common_cards[5];               // five common cards
 int g_current_common_cards_num = 0;     // the number of current common cards
 MyCard g_player_cards[2];               // my two cards
+int g_PID = 0;                          // my PID
 
 
 int main(int argc, char *argv[])
@@ -43,6 +44,7 @@ int main(int argc, char *argv[])
     strcpy(CLIENT_IP, argv[3]);
     int CLIENT_PORT = atoi(argv[4]);
     int PID = atoi(argv[5]);
+    g_PID = PID;
 
     printf("Server ip: %s\n", SERVER_IP);
     printf("Server port: %d \n", SERVER_PORT);
@@ -61,6 +63,10 @@ int main(int argc, char *argv[])
         printf("\n Error : Could not create socket \n");
         return 1;
     } 
+
+    // resue socket addr
+    int reuse_addr = 1;
+    setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (const char*)&reuse_addr, sizeof(reuse_addr));
     
     // bind client addr & socket descriptor
     if (bind(sockfd, (struct sockaddr*)&client_addr, sizeof(client_addr)) == -1)
@@ -84,13 +90,13 @@ int main(int argc, char *argv[])
     // connect to server
     while (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
     {
-        usleep(100);
+        usleep(100 * 1000); // sleep 100ms
         printf("\n Error : Connect Failed \n");
     }
     
     // send reg_msg to server
     memset(client_msg, 0, SIZE);
-    sprintf(client_msg, "reg: %d pname \n", PID);
+    sprintf(client_msg, "reg: %d haha \n", PID);
     printf("reg message: %s\n", client_msg);
     send(sockfd, client_msg, strlen(client_msg), 0);
     printf("send reg message successfully !\n");
