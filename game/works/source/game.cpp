@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <time.h>
 #include <unistd.h>
 #include <errno.h>
 #include <arpa/inet.h>
@@ -29,8 +30,7 @@ int g_PID = 0;                          // my PID
 
 int main(int argc, char *argv[])
 {
-
-
+    srand((unsigned)time(NULL));
     if (argc != 6)
     {
         printf("Usage %s <Server IP> <Server Port> <Client IP> <Client Port> <PID>\n", argv[0]);

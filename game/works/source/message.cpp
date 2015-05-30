@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <time.h>
 #include <unistd.h>
 #include <errno.h>
 #include <assert.h>
@@ -40,6 +41,11 @@ map<int, int> g_PID2Index;
 
 
 /******** Utility functions *********/
+double GetRandomNumber()
+{
+    return (rand() + 0.0) / (RAND_MAX + 0.0);
+}
+
 MyColor toMyColor(const string& color)
 {
     MyColor ret;
@@ -92,6 +98,134 @@ bool HasRaiseInCurrentInquireInfo()
     }
 
     return false;
+}
+
+int GetCurrentUnfoldPlayerNumber()
+{
+    int n = g_seatinfo.size();
+    int cnt = 0;
+    for (size_t i = 0; i < g_current_inquireinfo.size(); ++i)
+    {
+        if (g_current_inquireinfo[i].m_action == "fold")
+        {
+            cnt++;
+        }
+    }
+    return n - cnt;
+}
+
+
+/**
+ * return 2 - if has straight flush draw
+ * return 1 - if has flush draw
+ * return 0 - if has straight draw
+ * return -1 - not draw
+ */
+int HasFlopDraw()
+{
+    int rets = -1;
+    vector<MyCard> cards(g_common_cards, g_common_cards + 3);
+    cards.push_back(g_player_cards[0]);
+    cards.push_back(g_player_cards[1]);
+    sort(cards.begin(), cards.end());
+
+    MyCard tmp;
+    for (size_t i = 0; i < 5; ++i)
+    {
+        // remove cards i
+        tmp = cards[i];
+        
+        if (i == 0)
+        {
+            cards[i].m_point = cards[i+1].m_point - 1;
+            cards[i].m_color = cards[i+1].m_color;
+        }
+        else
+        {
+            cards[i].m_point = cards[i-1].m_point + 1;
+            cards[i].m_color = cards[i-1].m_color;
+        }
+
+        if (cards[0].m_point + 1 == cards[1].m_point && 
+            cards[1].m_point + 1 == cards[2].m_point &&
+            cards[2].m_point + 1 == cards[3].m_point &&
+            cards[3].m_point + 1 == cards[4].m_point &&
+            cards[0].m_color == cards[1].m_color &&
+            cards[1].m_color == cards[2].m_color &&
+            cards[2].m_color == cards[3].m_color &&
+            cards[3].m_color == cards[4].m_color)
+        {
+            rets = 2; 
+        }
+
+        // restore cards i
+        cards[i] = tmp;
+    }
+
+    if (rets == 2) return rets;
+
+    for (size_t i = 0; i < 5; ++i)
+    {
+        // remove cards i
+        tmp = cards[i];
+        
+        if (i == 0)
+        {
+            cards[i].m_point = cards[i+1].m_point - 1;
+            cards[i].m_color = cards[i+1].m_color;
+        }
+        else
+        {
+            cards[i].m_point = cards[i-1].m_point + 1;
+            cards[i].m_color = cards[i-1].m_color;
+        }
+
+        if (cards[0].m_color == cards[1].m_color &&
+            cards[1].m_color == cards[2].m_color &&
+            cards[2].m_color == cards[3].m_color &&
+            cards[3].m_color == cards[4].m_color)
+        {
+            rets = 1; 
+        }
+
+        // restore cards i
+        cards[i] = tmp;
+    }
+
+    if (rets == 1) return rets;
+
+
+    for (size_t i = 0; i < 5; ++i)
+    {
+        // remove cards i
+        tmp = cards[i];
+        
+        if (i == 0)
+        {
+            cards[i].m_point = cards[i+1].m_point - 1;
+            cards[i].m_color = cards[i+1].m_color;
+        }
+        else
+        {
+            cards[i].m_point = cards[i-1].m_point + 1;
+            cards[i].m_color = cards[i-1].m_color;
+        }
+
+        if (cards[0].m_point + 1 == cards[1].m_point && 
+            cards[1].m_point + 1 == cards[2].m_point &&
+            cards[2].m_point + 1 == cards[3].m_point &&
+            cards[3].m_point + 1 == cards[4].m_point
+           )
+        {
+            rets = 0; 
+        }
+
+        // restore cards i
+        cards[i] = tmp;
+    }
+
+    return rets;
+    
 }
 /******** Utility functions *********/
 
@@ -184,12 +318,74 @@ void ActionStrategy()
                   || (card1 == 10 && card2 == 13 && color1 == color2) // KTs
                 )
         {
-            Call();
+            int max_bet = GetMaxbetInCurrentInquireInfo();
+            int raise_num = 1.2 * max_bet;
+            Raise(raise_num);
+        }
+        // group 4:
+        else if (   (card1 == 8 && card2 == 14 && color1 == color2) // A8s
+                 || (card1 == 12 && card2 == 13)                    // KQ
+                 || (card1 == 8 && card2 == 8)                      // 88
+                 || (card1 == 10 && card2 == 12 && color1 == color2) // QTs
+                 || (card1 == 9 && card2 == 14 && color1 == color2)  // A9s
+                 || (card1 == 10 && card2 == 14) // AT
+                 || (card1 == 11 && card2 == 14) // AJ
+                 || (card1 == 10 && card2 == 11 && color1 == color2) // JTs
+                )
+        {
+            Call();   
+        }
+        // group 5: <= 6 player can playing
+        else if (   (card1 == 7 && card2 == 7) // 77
+                 || (card1 == 9 && card2 == 12 && color1 == color2) // Q9s
+                 || (card1 == 11 && card2 == 13) // KJ
+                 || (card1 == 11 && card2 == 12) // QJ
+                 || (card1 == 10 && card2 == 11 && color1 == color2) // JTs
+                 || (card1 == 7 && card2 == 14 && color1 == color2)  // A7s
+                 || (card1 == 6 && card2 == 14 && color1 == color2)  // A6s
+                 || (card1 == 5 && card2 == 14 && color1 == color2)  // A5s
+                 || (card1 == 4 && card2 == 14 && color1 == color2)  // A4s
+                 || (card1 == 3 && card2 == 14 && color1 == color2)  // A3s
+                 || (card1 == 2 && card2 == 14 && color1 == color2)  // A2s
+                 || (card1 == 9 && card2 == 11 && color1 == color2)  // J9s
+                 || (card1 == 9 && card2 == 10 && color1 == color2)  // T9s
+                 || (card1 == 9 && card2 == 13 && color1 == color2)  // K9s
+                 || (card1 == 10 && card2 == 13)    // KT
+                 || (card1 == 10 && card2 == 12)    // QT
+                )
+        {
+            if (g_seatinfo.size() <= 6)
+            {
+                Call();
+            }
+            else
+            {
+                double r = GetRandomNumber();
+                if (r <= 0.15) Call();
+                else Fold();
+            }
+            
         }
         // others
         else
         {
-            Fold();
+            int seat_num = g_seatinfo.size();
+            int fold_num = 0;
+            for (size_t i = 0; i < g_current_inquireinfo.size(); ++i)
+            {
+                if (g_current_inquireinfo[i].m_action == "fold") fold_num++;
+            }
+
+            if (fold_num == seat_num - 1)
+            {
+                Call();
+            }
+            else
+            {
+                double r = GetRandomNumber();
+                if (r < 0.1) Call();
+                else Fold();
+            }
         }
         return;
     }
@@ -223,7 +419,7 @@ void ActionStrategy()
              else
              {
                 int max_bet = GetMaxbetInCurrentInquireInfo();
-                Raise(2 * max_bet);
+                Raise(3 * max_bet);
              }
         }
         // Full-House
@@ -271,28 +467,38 @@ void ActionStrategy()
         }
 
         /** Case 3: Straight or Flush Draw **/
-        // Flush Draw
-        else if (   v[1].m_color == v[2].m_color && v[2].m_color == v[3].m_color &&
-                    v[3].m_color == v[4].m_color 
-                ||  v[0].m_color == v[2].m_color && v[2].m_color == v[3].m_color &&
-                    v[3].m_color == v[4].m_color
-                ||  v[0].m_color == v[1].m_color && v[1].m_color == v[3].m_color &&
-                    v[3].m_color == v[4].m_color
-                ||  v[0].m_color == v[1].m_color && v[1].m_color == v[2].m_color &&
-                    v[2].m_color == v[4].m_color
-                ||  v[0].m_color == v[1].m_color && v[1].m_color == v[2].m_color &&
-                    v[2].m_color == v[3].m_color
-                )
+        // Flush Straight Draw
+        else if ( 2 == HasFlopDraw())
+        {
+            Call();
+        }
+        //  
+        else if ( 1 == HasFlopDraw())
         {
             // common cards already has flush
             if (g_common_cards[0].m_color == g_common_cards[1].m_color &&
                 g_common_cards[1].m_color == g_common_cards[2].m_color)
             {
-                Fold();
+                double r = GetRandomNumber();
+                if (r <= 0.8) Call();
+                else Fold();
             }
             else
             {
                 Call();
+            }
+        }
+        else if ( 0 == HasFlopDraw())
+        {
+            int bet = GetMaxbetInCurrentInquireInfo();
+            int pot = g_current_inquire_totalpot;
+            if (pot / (bet + 0.0) >= 4.24)
+            {
+                Call();
+            }
+            else
+            {
+                Fold();
             }
         }
         /** Case 4: Has a Pair **/
@@ -341,6 +547,7 @@ void ActionStrategy()
     {
         Call();
     }
+
     return;
 }
 
