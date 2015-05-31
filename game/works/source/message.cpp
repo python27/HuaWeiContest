@@ -13,6 +13,7 @@
 #include <iostream>
 #include <vector>
 #include <map>
+#include <set>
 #include <string>
 #include <sstream>
 #include <algorithm>
@@ -41,6 +42,76 @@ map<int, int> g_PID2Index;
 
 
 /******** Utility functions *********/
+NUT_HAND GetHandCardType(vector<MyCard>& v)
+{
+    assert(v.size() == 5);
+    sort(v.begin(), v.end());
+    if (v[0].m_point + 1 == v[1].m_point &&
+        v[1].m_point + 1 == v[2].m_point &&
+        v[2].m_point + 1 == v[3].m_point && 
+        v[3].m_point + 1 == v[4].m_point &&
+        v[0].m_color == v[1].m_color &&
+        v[1].m_color == v[2].m_color &&
+        v[2].m_color == v[3].m_color &&
+        v[3].m_color == v[4].m_color)
+    {
+        return STRAIGHT_FLUSH;
+    }
+    else if (v[0].m_point == v[1].m_point &&
+             v[1].m_point == v[2].m_point &&
+             v[2].m_point == v[3].m_point 
+             || v[1].m_point == v[2].m_point &&
+                v[2].m_point == v[3].m_point &&
+                v[3].m_point == v[4].m_point)
+    {
+        return FOUR_OF_A_KIND;
+    }
+    else if (v[0].m_point == v[1].m_point &&
+             v[1].m_point == v[2].m_point &&
+             v[3].m_point == v[4].m_point)
+    {
+        return FULL_HOUSE;
+    }
+    else if (v[0].m_color == v[1].m_color &&
+             v[1].m_color == v[2].m_color &&
+             v[2].m_color == v[3].m_color &&
+             v[3].m_color == v[4].m_color)
+    {
+        return FLUSH;
+    }
+    else if (v[0].m_point + 1 == v[1].m_point &&
+             v[1].m_point + 1 == v[2].m_point &&
+             v[2].m_point + 1 == v[3].m_point &&
+             v[3].m_point + 1 == v[4].m_point)
+    {
+        return STRAIGHT;
+    }
+    else if (v[0].m_point == v[1].m_point && v[1].m_point == v[2].m_point
+            || v[1].m_point == v[2].m_point && v[2].m_point == v[3].m_point
+            || v[2].m_point == v[3].m_point && v[3].m_point == v[4].m_point)
+    {
+        return THREE_OF_A_KIND;
+    }
+    else if (v[0].m_point == v[1].m_point && v[2].m_point == v[3].m_point
+            || v[0].m_point == v[1].m_point && v[3].m_point == v[4].m_point
+            || v[1].m_point == v[2].m_point && v[3].m_point == v[4].m_point)
+    {
+        return TWO_PAIR;
+    }
+    else if (v[0].m_point == v[1].m_point ||
+             v[1].m_point == v[2].m_point ||
+             v[2].m_point == v[3].m_point ||
+             v[3].m_point == v[4].m_point)
+    {
+        return ONE_PAIR;
+    }
+    else
+    {
+        return HIGH_CARD;
+    }
+
+}
+
 double GetRandomNumber()
 {
     return (rand() + 0.0) / (RAND_MAX + 0.0);
@@ -113,6 +184,7 @@ int GetCurrentUnfoldPlayerNumber()
     }
     return n - cnt;
 }
+
 
 
 /**
@@ -226,6 +298,99 @@ int HasFlopDraw()
 
     return rets;
     
+}
+
+
+int GetMyPos()
+{
+    int n = g_seatinfo.size();
+    int ans = 0;
+    for (int i = 0; i < n; ++i)
+    {
+        if (g_seatinfo[i].m_pid == g_PID)
+        {
+            ans = i + 1;
+            break;
+        }
+    }
+    return ans;
+}
+
+int InitialHandCardsType(const MyCard& card1, const MyCard& card2)
+{
+    int n1 = card1.m_point;
+    int n2 = card2.m_point;
+    if (n1 < n2) swap(n1, n2);
+    int c1 = card1.m_color;
+    int c2 = card2.m_color;
+
+    if (n1 == 14 && n2 == 14 || 
+        n1 == 13 && n2 == 13 || 
+        n1 == 12 && n2 == 12 ||
+        n1 == 14 && n2 == 13 && c1 == c2 || 
+        n1 == 14 && n2 == 12 && c1 == c2)
+    {
+        return 1;
+    }
+    else if (n1 == 11 && n2 == 11 || 
+             n1 == 10 && n2 == 10 || 
+             n1 == 14 && n2 == 11 && c1 == c2 ||
+             n1 == 14 && n2 == 10 && c1 == c2 ||
+             n1 == 14 && n2 == 13 ||
+             n1 == 14 && n2 == 12 ||
+             n1 == 13 && n2 == 12 && c1 == c2)
+    {
+        return 2;
+    }
+    else if (n1 == 9 && n2 == 9 ||
+             n1 == 12 && n2 == 11 && c1 == c2 ||
+             n1 == 13 && n2 == 11 && c1 == c2 ||
+             n1 == 13 && n2 == 10 && c1 == c2 )
+    {
+        return 3;
+    }
+    else if (n1 == 14 && n2 == 8 && c1 == c2 ||
+             n1 == 13 && n2 == 12 ||
+             n1 == 8 && n2 == 8 ||
+             n1 == 12 && n2 == 10 && c1 == c2 ||
+             n1 == 14 && n2 == 9 && c1 == c2 ||
+             n1 == 14 && n2 == 10 ||
+             n1 == 14 && n2 == 11 ||
+             n1 == 11 && n2 == 10 && c1 == c2)
+    {
+        return 4;
+    }
+    else if (n1 == 7 && n2 == 7 ||
+             n1 == 12 && n2 == 9 && c1 == c2 ||
+             n1 == 13 && n2 == 11 ||
+             n1 == 12 && n2 == 11 ||
+             n1 == 11 && n2 == 10 && c1 == c2 ||
+             n1 == 14 && n2 == 7 && c1 == c2 ||
+             n1 == 14 && n2 == 6 && c1 == c2 ||
+             n1 == 14 && n2 == 5 && c1 == c2 ||
+             n1 == 14 && n2 == 4 && c1 == c2 ||
+             n1 == 14 && n2 == 3 && c1 == c2 ||
+             n1 == 14 && n2 == 2 && c1 == c2 ||
+             n1 == 11 && n2 == 9 && c1 == c2 ||
+             n1 == 10 && n2 == 9 && c1 == c2 ||
+             n1 == 13 && n2 == 9 && c1 == c2 ||
+             n1 == 13 && n2 == 10 ||
+             n1 == 12 && n2 == 10)
+    {
+        return 5;
+    }
+    else if (n1 == n2)
+    {
+        return 6;
+    }
+    else if (n1 == 14 || n2 == 14)
+    {
+        return 7;
+    }
+    else
+    {
+        return 8;
+    }
 }
 /******** Utility functions *********/
 
@@ -354,38 +519,60 @@ void ActionStrategy()
                  || (card1 == 10 && card2 == 12)    // QT
                 )
         {
-            if (g_seatinfo.size() <= 6)
+            int n = g_seatinfo.size();
+            int fold_n = 0;
+            for (size_t i = 0; i < g_current_inquireinfo.size(); i++)
+            {
+                if (g_current_inquireinfo[i].m_action == "fold") fold_n++;
+            }
+            int cur_n = n - fold_n;
+            if (cur_n <= 6)
             {
                 Call();
             }
             else
             {
                 double r = GetRandomNumber();
-                if (r <= 0.15) Call();
+                if (r <= 0.1) Call();
                 else Fold();
             }
             
         }
-        // others
-        else
+        // group 6: small pair
+        else if (card1 == card2)
         {
             int seat_num = g_seatinfo.size();
-            int fold_num = 0;
-            for (size_t i = 0; i < g_current_inquireinfo.size(); ++i)
-            {
-                if (g_current_inquireinfo[i].m_action == "fold") fold_num++;
-            }
-
-            if (fold_num == seat_num - 1)
+            int pos = GetMyPos();
+            if (pos >= 2 * seat_num / 3)
             {
                 Call();
             }
             else
             {
                 double r = GetRandomNumber();
-                if (r < 0.1) Call();
+                if (r < 0.05) Call();
                 else Fold();
             }
+
+        }
+        // group 7: has at least an A
+        else if (card1 == 14 || card2 == 14)
+        {
+            double r = GetRandomNumber();
+            if (r < 0.05) Call();
+            else Fold();
+        }
+        // group 8: fold cards
+        else
+        {
+            int n = g_seatinfo.size();
+            int dead = 0;
+            for (int i = 0; i < n; ++i)
+            {
+                if (g_seatinfo[i].m_islive == 0) dead++;
+            }
+            if (dead == n - 1) Call();
+            else Fold();
         }
         return;
     }
@@ -472,7 +659,7 @@ void ActionStrategy()
         {
             Call();
         }
-        //  
+        // Flush Draw 
         else if ( 1 == HasFlopDraw())
         {
             // common cards already has flush
@@ -488,6 +675,7 @@ void ActionStrategy()
                 Call();
             }
         }
+        // Straight Draw
         else if ( 0 == HasFlopDraw())
         {
             int bet = GetMaxbetInCurrentInquireInfo();
@@ -647,6 +835,7 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
         /** game over message, DONE **/
         else if (line == "game-over ")
         {
+            
             close(sockfd);
             return 1;
         }
