@@ -85,6 +85,264 @@ int CmpTwoPlayerCardsInFlop(vector<MyCard>& p1, vector<MyCard>& p2)
     }
 }
 
+// 从cards中选择所有的5张最好的牌
+void ChooseKCardsFromNCards(vector<MyCard>& cards, int offset, int k, vector<MyCard>& cur_cards, vector<MyCard>& best_cards)
+{
+    int n = cards.size();
+    if (k == 0)
+    {
+        sort(cur_cards.begin(), cur_cards.end());
+        sort(best_cards.begin(), best_cards.end());
+        if (CmpTwoPlayerCardsInFlop(cur_cards, best_cards) >= 0)
+        {
+            copy(cur_cards.begin(), cur_cards.end(), best_cards.begin());     
+        }
+        return;
+    }
+
+    for (int i = offset; i <= n-k; ++i)
+    {
+       // cout << "DEBUG: recursion; offset = " << i << endl;
+       // cout << "DEBUG: recursion; n = " << n << endl;
+       // cout << "DEBUG: recursion; k = " << k << endl;
+       // cout << "DEBUG: recursion; n - k = " << n - k << endl;
+        cur_cards.push_back(cards[i]);
+        ChooseKCardsFromNCards(cards, i+1, k-1, cur_cards, best_cards);
+        cur_cards.pop_back();
+    }
+}
+
+// input 2 hand cards, return the best 5 cards in turn stage
+vector<MyCard> ChooseBestNutHandCardsInTurn(const MyCard& card1, const MyCard& card2)
+{
+    vector<MyCard> v;
+    v.push_back(card1);
+    v.push_back(card2);
+    v.push_back(g_common_cards[0]);
+    v.push_back(g_common_cards[1]);
+    v.push_back(g_common_cards[2]);
+    v.push_back(g_common_cards[3]);
+
+    //cout << "DEBUG: choose best nut hand given two cards" << endl;
+
+    sort(v.begin(), v.end());
+    // init
+    vector<MyCard> best_cards(v.begin(), v.begin() + 5);
+    vector<MyCard> cur_cards;
+    ChooseKCardsFromNCards(v, 0, 5, cur_cards, best_cards);
+    return best_cards;  
+}
+
+
+// input 2 hand cards, return the best 5 cards in river stage
+vector<MyCard> ChooseBestNutHandCardsInRiver(const MyCard& card1, const MyCard& card2)
+{
+    vector<MyCard> v;
+    v.push_back(card1);
+    v.push_back(card2);
+    v.push_back(g_common_cards[0]);
+    v.push_back(g_common_cards[1]);
+    v.push_back(g_common_cards[2]);
+    v.push_back(g_common_cards[3]);
+    v.push_back(g_common_cards[4]);
+
+    sort(v.begin(), v.end());
+    // init
+    vector<MyCard> best_cards(v.begin(), v.begin() + 5);
+    vector<MyCard> cur_cards;
+    ChooseKCardsFromNCards(v, 0, 5, cur_cards, best_cards);
+    return best_cards;
+}
+
+bool InKnownCardInTurn(const MyCard& card)
+{
+    if (card.m_point == g_player_cards[0].m_point && card.m_color == g_player_cards[0].m_color ||
+        card.m_point == g_player_cards[1].m_point && card.m_color == g_player_cards[1].m_color ||
+        card.m_point == g_common_cards[0].m_point && card.m_color == g_common_cards[0].m_color ||
+        card.m_point == g_common_cards[1].m_point && card.m_color == g_common_cards[1].m_color ||
+        card.m_point == g_common_cards[2].m_point && card.m_color == g_common_cards[2].m_color ||
+        card.m_point == g_common_cards[3].m_point && card.m_color == g_common_cards[3].m_color)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+double WinProbabilityInTurn()
+{
+ 
+    // get my best nut hand in turn
+    vector<MyCard> player_best_cards = ChooseBestNutHandCardsInTurn(g_player_cards[0], g_player_cards[1]);
+    sort(player_best_cards.begin(), player_best_cards.end());
+    
+    // whole pokers
+    vector<MyCard> v;
+    for (int i = 2; i <= 14; ++i)
+    {
+        MyCard tmp;
+        tmp.m_point = i;
+        tmp.m_color = SPADES;
+        v.push_back(tmp);
+        tmp.m_point = i;
+        tmp.m_color = HEARTS;
+        v.push_back(tmp);
+        tmp.m_point = i;
+        tmp.m_color = CLUBS;
+        v.push_back(tmp);
+        tmp.m_point = i;
+        tmp.m_color = DIAMONDS;
+        v.push_back(tmp);
+    }
+
+    int win_cnt = 0;
+    int lose_cnt = 0;
+    int tot_cnt = 0;
+    for (size_t i = 0; i < v.size(); ++i)
+    {
+        if (!InKnownCardInTurn(v[i]))
+        {
+            for (size_t j = i + 1; j < v.size(); ++j)
+            {
+                if (!InKnownCardInTurn(v[j]))
+                {
+                    vector<MyCard> other_best_cards = ChooseBestNutHandCardsInTurn(v[i], v[j]);
+                    
+                    
+                    sort(other_best_cards.begin(), other_best_cards.end()); 
+                    if (CmpTwoPlayerCardsInFlop(player_best_cards, other_best_cards) >= 0)
+                    {
+                        win_cnt++;
+                    }
+                    else
+                    {
+                        lose_cnt++;
+                    }
+                    
+                }
+            }
+        }
+    }
+    tot_cnt = win_cnt + lose_cnt;
+
+    double oneplayerWinProb = double(win_cnt) / (double)(win_cnt + lose_cnt);
+
+    int seat_num = g_seatinfo.size();
+    int player_num = seat_num - 1; 
+
+    double ans = 1.0;
+    double w = (double)win_cnt;
+    double t = (double)tot_cnt;
+    for (int i = 0; i < player_num; ++i)
+    {
+        ans *= w / t;
+        w -= 1.0;
+        t -= 1.0;
+    }
+
+    return ans;
+}
+
+
+bool InKnownCardInRiver(const MyCard& card)
+{
+    if (card.m_point == g_player_cards[0].m_point && card.m_color == g_player_cards[0].m_color ||
+        card.m_point == g_player_cards[1].m_point && card.m_color == g_player_cards[1].m_color ||
+        card.m_point == g_common_cards[0].m_point && card.m_color == g_common_cards[0].m_color ||
+        card.m_point == g_common_cards[1].m_point && card.m_color == g_common_cards[1].m_color ||
+        card.m_point == g_common_cards[2].m_point && card.m_color == g_common_cards[2].m_color ||
+        card.m_point == g_common_cards[3].m_point && card.m_color == g_common_cards[3].m_color ||
+        card.m_point == g_common_cards[4].m_point && card.m_color == g_common_cards[4].m_color  )
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+double WinProbabilityInRiver()
+{
+
+    // get my best nut hand in river
+    vector<MyCard> player_best_cards = ChooseBestNutHandCardsInRiver(g_player_cards[0], g_player_cards[1]);
+    
+    // whole pokers
+    vector<MyCard> v;
+    for (int i = 2; i <= 14; ++i)
+    {
+        MyCard tmp;
+        tmp.m_point = i;
+        tmp.m_color = SPADES;
+        v.push_back(tmp);
+        tmp.m_point = i;
+        tmp.m_color = HEARTS;
+        v.push_back(tmp);
+        tmp.m_point = i;
+        tmp.m_color = CLUBS;
+        v.push_back(tmp);
+        tmp.m_point = i;
+        tmp.m_color = DIAMONDS;
+        v.push_back(tmp);
+    }
+
+    int win_cnt = 0;
+    int lose_cnt = 0;
+    int tot_cnt = 0;
+    for (size_t i = 0; i < v.size(); ++i)
+    {
+        if (!InKnownCardInRiver(v[i]))
+        {
+            for (size_t j = i + 1; j < v.size(); ++j)
+            {
+                if (!InKnownCardInRiver(v[j]))
+                {
+                    vector<MyCard> other_best_cards = ChooseBestNutHandCardsInRiver(v[i], v[j]);
+                    
+                    sort(player_best_cards.begin(), player_best_cards.end());
+                    sort(other_best_cards.begin(), other_best_cards.end()); 
+                    if (CmpTwoPlayerCardsInFlop(player_best_cards, other_best_cards) >= 0)
+                    {
+                        win_cnt++;
+                    }
+                    else
+                    {
+                        lose_cnt++;
+                    }
+                    
+                }
+            }
+        }
+    }
+    tot_cnt = win_cnt + lose_cnt;
+
+    double oneplayerWinProb = double(win_cnt) / (double)(win_cnt + lose_cnt);
+
+    int seat_num = g_seatinfo.size();
+    int player_num = seat_num - 1; 
+
+    double ans = 1.0;
+    double w = (double)win_cnt;
+    double t = (double)tot_cnt;
+    for (int i = 0; i < player_num; ++i)
+    {
+        ans *= w / t;
+        w -= 1.0;
+        t -= 1.0;
+    }
+
+    return ans;
+    
+}
+
+
+
+
+
+
+
 double WinProbabilityInFlop()
 {
     vector<MyCard> known_cards;
@@ -100,16 +358,16 @@ double WinProbabilityInFlop()
     for (int i = 2; i <= 14; ++i)
     {
         MyCard tmp;
-        tmp.m_point == 2;
-        tmp.m_color == SPADES;
+        tmp.m_point = i;
+        tmp.m_color = SPADES;
         v.push_back(tmp);
-        tmp.m_point = 2;
+        tmp.m_point = i;
         tmp.m_color = HEARTS;
         v.push_back(tmp);
-        tmp.m_point = 2;
+        tmp.m_point = i;
         tmp.m_color = CLUBS;
         v.push_back(tmp);
-        tmp.m_point = 2;
+        tmp.m_point = i;
         tmp.m_color = DIAMONDS;
         v.push_back(tmp);
     }
@@ -864,12 +1122,57 @@ void ActionStrategy()
     /********* turn card round *******/
     else if (g_current_common_cards_num == 4)
     {
-        Call();
+        
+        double win_prob = WinProbabilityInTurn();
+       // double win_prob = 0.8;
+        double max_bet = GetMaxbetInCurrentInquireInfo();
+        double pot = g_current_inquire_totalpot; 
+        double return_prob = double(max_bet) / (double)(max_bet + pot);
+
+        double cur_RR = win_prob / return_prob;
+        double max_raise = pot / double((double)MAX_RR / win_prob - 1.0);
+
+        if (cur_RR >= MAX_RR)
+        {
+            Raise(max_raise);
+        }
+        else if (cur_RR >= MIN_RR)
+        {
+            Call();
+        }
+        else
+        {
+            Fold();
+        }
+        
+        //Call();
     }
     /********* river card round *********/
     else if (g_current_common_cards_num == 5)
     {
-        Call();
+        
+        double win_prob = WinProbabilityInRiver();
+        double max_bet = GetMaxbetInCurrentInquireInfo();
+        double pot = g_current_inquire_totalpot; 
+        double return_prob = double(max_bet) / (double)(max_bet + pot);
+
+        double cur_RR = win_prob / return_prob;
+        double max_raise = pot / double((double)MAX_RR / win_prob - 1.0);
+
+        if (cur_RR >= MAX_RR)
+        {
+            Raise(max_raise);
+        }
+        else if (cur_RR >= MIN_RR)
+        {
+            Call();
+        }
+        else
+        {
+            Fold();
+        }
+        
+        //Call();
     }
 
     return;
