@@ -31,7 +31,10 @@ extern MyCard g_common_cards[5];
 extern int g_current_common_cards_num;
 extern MyCard g_player_cards[2];
 extern int g_PID;
+const double MAX_RR = 1.6;
+const double MIN_RR = 1.0;
 /* global variable end */
+
 
 
 vector<InquireInfo> g_current_inquireinfo;
@@ -40,12 +43,132 @@ int g_current_inquire_totalpot;
 vector<SeatInfo> g_seatinfo;
 map<int, int> g_PID2Index;
 
+/* function declaration */
+NUT_HAND GetHandCardType(const vector<MyCard>& v);
 
 /******** Utility functions *********/
-NUT_HAND GetHandCardType(vector<MyCard>& v)
+bool InKnownCardInFlop(const MyCard& curCard)
+{
+    if (curCard.m_point == g_player_cards[0].m_point && curCard.m_color == g_player_cards[0].m_color || 
+        curCard.m_point == g_player_cards[1].m_point && curCard.m_color == g_player_cards[1].m_color || 
+        curCard.m_point == g_common_cards[0].m_point && curCard.m_color == g_common_cards[0].m_color || 
+        curCard.m_point == g_common_cards[1].m_point && curCard.m_color == g_common_cards[1].m_color || 
+        curCard.m_point == g_common_cards[2].m_point && curCard.m_color == g_common_cards[2].m_color)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+int CmpTwoPlayerCardsInFlop(vector<MyCard>& p1, vector<MyCard>& p2)
+{
+    NUT_HAND type1 = GetHandCardType(p1);
+    NUT_HAND type2 = GetHandCardType(p2);
+    if (type1 > type2) return 1;
+    else if (type1 < type2) return -1;
+    else
+    {
+        if      (p1[4].m_point > p2[4].m_point) return 1;
+        else if (p1[4].m_point < p2[4].m_point) return -1;
+        else if (p1[3].m_point > p2[3].m_point) return 1;
+        else if (p1[3].m_point < p2[3].m_point) return -1;
+        else if (p1[2].m_point > p2[2].m_point) return 1;
+        else if (p1[2].m_point < p2[2].m_point) return -1;
+        else if (p1[1].m_point > p2[1].m_point) return 1;
+        else if (p1[1].m_point < p2[1].m_point) return -1;
+        else if (p1[0].m_point > p2[0].m_point) return 1;
+        else if (p1[0].m_point < p2[0].m_point) return -1;
+        else return 0;
+    }
+}
+
+double WinProbabilityInFlop()
+{
+    vector<MyCard> known_cards;
+    known_cards.push_back(g_player_cards[0]);
+    known_cards.push_back(g_player_cards[1]);
+    known_cards.push_back(g_common_cards[0]);
+    known_cards.push_back(g_common_cards[1]);
+    known_cards.push_back(g_common_cards[2]);
+    sort(known_cards.begin(), known_cards.end());
+    NUT_HAND known_card_type = GetHandCardType(known_cards);
+
+    vector<MyCard> v;
+    for (int i = 2; i <= 14; ++i)
+    {
+        MyCard tmp;
+        tmp.m_point == 2;
+        tmp.m_color == SPADES;
+        v.push_back(tmp);
+        tmp.m_point = 2;
+        tmp.m_color = HEARTS;
+        v.push_back(tmp);
+        tmp.m_point = 2;
+        tmp.m_color = CLUBS;
+        v.push_back(tmp);
+        tmp.m_point = 2;
+        tmp.m_color = DIAMONDS;
+        v.push_back(tmp);
+    }
+    
+    int win_cnt = 0;
+    int lose_cnt = 0;
+    int tot_cnt = 0;
+    for (size_t i = 0; i < v.size(); ++i)
+    {
+        if (!InKnownCardInFlop(v[i]))
+        {
+            for (size_t j = i + 1; j < v.size(); ++j)
+            {
+                if (!InKnownCardInFlop(v[j]))
+                {
+                    vector<MyCard> other_cards;
+                    other_cards.push_back(v[i]);
+                    other_cards.push_back(v[j]);
+                    other_cards.push_back(g_common_cards[0]);
+                    other_cards.push_back(g_common_cards[1]);
+                    other_cards.push_back(g_common_cards[2]);
+                    sort(other_cards.begin(), other_cards.end()); 
+                    if (CmpTwoPlayerCardsInFlop(known_cards, other_cards) >= 0)
+                    {
+                        win_cnt++;
+                    }
+                    else
+                    {
+                        lose_cnt++;
+                    }
+                    
+                }
+            }
+        }
+    }
+    tot_cnt = win_cnt + lose_cnt;
+
+    double oneplayerWinProb = double(win_cnt) / (double)(win_cnt + lose_cnt);
+
+    int seat_num = g_seatinfo.size();
+    int player_num = seat_num - 1; 
+
+    double ans = 1.0;
+    double w = (double)win_cnt;
+    double t = (double)tot_cnt;
+    for (int i = 0; i < player_num; ++i)
+    {
+        ans *= w / t;
+        w -= 1.0;
+        t -= 1.0;
+    }
+
+    return ans;
+    
+}
+
+NUT_HAND GetHandCardType(const vector<MyCard>& v)
 {
     assert(v.size() == 5);
-    sort(v.begin(), v.end());
     if (v[0].m_point + 1 == v[1].m_point &&
         v[1].m_point + 1 == v[2].m_point &&
         v[2].m_point + 1 == v[3].m_point && 
@@ -465,7 +588,7 @@ void ActionStrategy()
         // group 2: strong
         else if (    (card1 == 11 && card2 == 11) // JJ
                   || (card1 == 10 && card2 == 10) // TT
-                  || (card1 == 11 && card2 == 14) // AJs
+                  || (card1 == 11 && card2 == 14 && color1 == color2) // AJs
                   || (card1 == 10 && card2 == 14 && color1 == color2) // ATs
                   || (card1 == 13 && card2 == 14) // AK
                   || (card1 == 12 && card2 == 14) // AQ
@@ -488,11 +611,11 @@ void ActionStrategy()
             Raise(raise_num);
         }
         // group 4:
-        else if (   (card1 == 8 && card2 == 14 && color1 == color2) // A8s
+        else if (   (card1 == 8  && card2 == 14 && color1 == color2) // A8s
                  || (card1 == 12 && card2 == 13)                    // KQ
-                 || (card1 == 8 && card2 == 8)                      // 88
+                 || (card1 == 8  && card2 == 8)                      // 88
                  || (card1 == 10 && card2 == 12 && color1 == color2) // QTs
-                 || (card1 == 9 && card2 == 14 && color1 == color2)  // A9s
+                 || (card1 == 9  && card2 == 14 && color1 == color2)  // A9s
                  || (card1 == 10 && card2 == 14) // AT
                  || (card1 == 11 && card2 == 14) // AJ
                  || (card1 == 10 && card2 == 11 && color1 == color2) // JTs
@@ -585,18 +708,25 @@ void ActionStrategy()
         v.push_back(g_player_cards[0]);
         v.push_back(g_player_cards[1]);
         sort(v.begin(), v.end());
+
+        double win_prob = WinProbabilityInFlop();
+        double max_bet = GetMaxbetInCurrentInquireInfo();
+        double pot = g_current_inquire_totalpot; 
+        double return_prob = double(max_bet) / (double)(max_bet + pot);
+
+        double cur_RR = win_prob / return_prob;
+        double max_raise = pot / double((double)MAX_RR / win_prob - 1.0);
+
         /** first case: complete **/
+        NUT_HAND cur_cardtype =  GetHandCardType(v);
         // straight flush
-        if ( v[0].m_point + 1 == v[1].m_point && v[1].m_point + 1 == v[2].m_point
-             && v[2].m_point + 1 == v[3].m_point && v[3].m_point + 1 == v[4].m_point
-             && v[0].m_color == v[1].m_color && v[0].m_color == v[2].m_color 
-             && v[0].m_color == v[3].m_color && v[0].m_color == v[4].m_color)
+        if (STRAIGHT_FLUSH == cur_cardtype)
         {
             int max_bet = GetMaxbetInCurrentInquireInfo();
             Raise(5 * max_bet);
         }
         // Quads
-        else if (v[1].m_point == v[4].m_point || v[0].m_point == v[3].m_point)
+        else if (FOUR_OF_A_KIND == cur_cardtype)
         {
              if (HasRaiseInCurrentInquireInfo())
              {
@@ -610,15 +740,13 @@ void ActionStrategy()
              }
         }
         // Full-House
-        else if (v[0].m_point == v[1].m_point && v[2].m_point == v[4].m_point ||
-                 v[0].m_point == v[2].m_point && v[3].m_point == v[4].m_point)
+        else if (FULL_HOUSE == cur_cardtype)
         {
             int max_bet = GetMaxbetInCurrentInquireInfo();
             Raise(3 * max_bet);
         }
         // Flush
-        else if (v[0].m_color == v[1].m_color && v[1].m_color == v[2].m_color &&
-                 v[2].m_color == v[3].m_color && v[3].m_color == v[4].m_color)
+        else if (FLUSH == cur_cardtype)
         {
             if (v[4].m_point == 14)
             {
@@ -627,19 +755,21 @@ void ActionStrategy()
             }
             else
             {
-                Call();
+                if (cur_RR >= MAX_RR) Raise(max_raise);
+                else if (cur_RR >= MIN_RR) Call();
+                else Fold();
             }
         }
         // straight
-        else if (v[0].m_point + 1 == v[1].m_point && v[1].m_point + 1 == v[2].m_point
-                 && v[2].m_point + 1 == v[3].m_point && v[3].m_point + 1 == v[4].m_point)
+        else if (STRAIGHT == cur_cardtype)
         {
-            Call(); 
+            if (cur_RR >= MAX_RR) Raise(max_raise);
+            else if (cur_RR >= MIN_RR) Call();
+            else Fold();
         }
 
         /** Case 2: Has three of a kind **/
-        else if (v[0].m_point == v[2].m_point || v[1].m_point == v[3].m_point
-                 || v[2].m_point == v[4].m_point)
+        else if (THREE_OF_A_KIND == cur_cardtype)
         {
             // has a pair in hand + 1 common card
             if (g_player_cards[0].m_point == g_player_cards[1].m_point)
@@ -649,7 +779,9 @@ void ActionStrategy()
             }
             else
             {
-                Call();
+                if (cur_RR >= MAX_RR) Raise(max_raise);
+                else if (cur_RR >= MIN_RR) Call();
+                else Fold();
             }
         }
 
@@ -657,7 +789,10 @@ void ActionStrategy()
         // Flush Straight Draw
         else if ( 2 == HasFlopDraw())
         {
-            Call();
+            if (cur_RR >= MAX_RR) Raise(max_raise);
+            else if (cur_RR >= MIN_RR) Call();
+            else Fold();
+        
         }
         // Flush Draw 
         else if ( 1 == HasFlopDraw())
@@ -672,22 +807,17 @@ void ActionStrategy()
             }
             else
             {
-                Call();
+                if (cur_RR >= MAX_RR) Raise(max_raise);
+                else if (cur_RR >= MIN_RR) Call();
+                else Fold();
             }
         }
         // Straight Draw
         else if ( 0 == HasFlopDraw())
         {
-            int bet = GetMaxbetInCurrentInquireInfo();
-            int pot = g_current_inquire_totalpot;
-            if (pot / (bet + 0.0) >= 4.24)
-            {
-                Call();
-            }
-            else
-            {
-                Fold();
-            }
+            if (cur_RR >= MAX_RR) Raise(max_raise);
+            else if (cur_RR >= MIN_RR) Call();
+            else Fold();
         }
         /** Case 4: Has a Pair **/
         else if (v[3].m_point == v[4].m_point)
@@ -703,7 +833,9 @@ void ActionStrategy()
             }
             else
             {
-                Fold();
+                if (cur_RR >= MAX_RR) Raise(max_raise);
+                else if (cur_RR >= MIN_RR) Call();
+                else Fold();
             }
         }
         /** Case 5: nothing in common cards, high card in hand **/
@@ -717,12 +849,16 @@ void ActionStrategy()
             }
             else
             {
-                Fold();
+                if (cur_RR >= MAX_RR) Raise(max_raise);
+                else if (cur_RR >= MIN_RR) Call();
+                else Fold();
             }
         }
         else
         {
-            Fold();
+            if (cur_RR >= MAX_RR) Raise(max_raise);
+            else if (cur_RR >= MIN_RR) Call();
+            else Fold();
         }
     }
     /********* turn card round *******/
