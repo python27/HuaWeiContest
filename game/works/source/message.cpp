@@ -32,13 +32,16 @@ extern MyCard g_common_cards[5];
 extern int g_current_common_cards_num;
 extern MyCard g_player_cards[2];
 extern int g_PID;
-const double MAX_RR = 1.6;
+const double MAX_RR = 1.5;
 const double MIN_RR = 1.0;
 
 int g_initial_bet_cnt = 0;
 int g_flop_bet_cnt = 0;
 int g_turn_bet_cnt = 0;
 int g_river_bet_cnt = 0;
+const int g_InitialHandcardType = 3;
+const double g_alpha = 0.8;
+const double g_beta = 0.2;
 /* global variable end */
 
 
@@ -48,11 +51,20 @@ int g_current_inquire_totalpot;
 
 vector<SeatInfo> g_seatinfo;
 map<int, int> g_PID2Index;
+map<int, PlayerType> g_PlayerBehavior;
 
 /* function declaration */
 NUT_HAND GetHandCardType(const vector<MyCard>& v);
 
 /******** Utility functions *********/
+
+int GetMyCurrentTotalMoney()
+{
+    int idx = g_PID2Index[g_PID];
+    return g_seatinfo[idx].m_money + g_seatinfo[idx].m_jetton;
+}
+
+
 bool InKnownCardInFlop(const MyCard& curCard)
 {
     if (curCard.m_point == g_player_cards[0].m_point && curCard.m_color == g_player_cards[0].m_color || 
@@ -833,6 +845,8 @@ void ActionStrategy()
     if (g_current_common_cards_num == 0)
     {
         g_initial_bet_cnt++;
+        
+        int halfpot = g_current_inquire_totalpot;        
 
         int card1 = g_player_cards[0].m_point;
         int card2 = g_player_cards[1].m_point;
@@ -851,6 +865,7 @@ void ActionStrategy()
             {
                 int max_bet = GetMaxbetInCurrentInquireInfo();
                 int raise_num = 5 * max_bet;
+                raise_num = min(raise_num, halfpot);
                 Raise(raise_num);
             }
             else
@@ -873,6 +888,7 @@ void ActionStrategy()
             {
                 int max_bet = GetMaxbetInCurrentInquireInfo();
                 int raise_num = 3 * max_bet;
+                raise_num = min(raise_num, halfpot);
                 Raise(raise_num);
             }
             else
@@ -892,6 +908,7 @@ void ActionStrategy()
             {
                 int max_bet = GetMaxbetInCurrentInquireInfo();
                 int raise_num = 1.2 * max_bet;
+                raise_num = min(raise_num, halfpot);
                 Raise(raise_num);
             }
             else
@@ -944,9 +961,31 @@ void ActionStrategy()
             }
             else
             {
-                double r = GetRandomNumber();
-                if (r <= 0.1) Call();
-                else Fold();
+                bool flag = false;
+                for (size_t i = 0; i < g_current_inquireinfo.size(); ++i)
+                {
+                    if (g_current_inquireinfo[i].m_action != "fold")
+                    {
+                        int pid = g_current_inquireinfo[i].m_pid;
+                        if (g_PlayerBehavior[pid].m_handcardType < 3.5)
+                        {
+                            flag = true;
+                            break;
+                        }
+                    }
+                    
+                }
+
+                if (flag)
+                {
+                    Fold();
+                }
+                else
+                {
+                    double r = GetRandomNumber();
+                    if (r <= 0.6) Call();
+                    else Fold();
+                }
             }
             
         }
@@ -961,18 +1000,61 @@ void ActionStrategy()
             }
             else
             {
-                double r = GetRandomNumber();
-                if (r < 0.05) Call();
-                else Fold();
+                
+                bool flag = false;
+                for (size_t i = 0; i < g_seatinfo.size(); ++i)
+                {
+                    int pid = g_seatinfo[i].m_pid;
+                    if (pid != g_PID)
+                    {
+                        if (g_PlayerBehavior[pid].m_handcardType < 4.0)
+                        {
+                            flag = true;
+                        }
+                    }
+                }
+                
+                if (flag)
+                {
+                    Fold();
+                }
+                else
+                {
+                    double r = GetRandomNumber();
+                    if (r < 0.15) Call();
+                    else Fold();
+                }
             }
 
         }
         // group 7: has at least an A
         else if (card1 == 14 || card2 == 14)
         {
-            double r = GetRandomNumber();
-            if (r < 0.05) Call();
-            else Fold();
+            
+            bool flag = false;
+            for (size_t i = 0; i < g_current_inquireinfo.size(); ++i)
+            {
+                if (g_current_inquireinfo[i].m_action != "fold")
+                {
+                    int pid = g_current_inquireinfo[i].m_pid;
+                    if (g_PlayerBehavior[pid].m_handcardType < 5.0)
+                    {
+                        flag = true;
+                        break;
+                    }
+                }
+
+            }
+            if (flag)
+            {
+                Fold();
+            }
+            else
+            {
+                double r = GetRandomNumber();
+                if (r < 0.10) Call();
+                else Fold();
+            }
         }
         // group 8: fold cards
         else
@@ -993,7 +1075,7 @@ void ActionStrategy()
     /********* 3 flop cards round ********/
     else if (g_current_common_cards_num == 3)
     {
-        g_flop_bet_cnt++;        
+        g_flop_bet_cnt++;
 
         vector<MyCard> v(g_common_cards, g_common_cards + 3);
         v.push_back(g_player_cards[0]);
@@ -1071,7 +1153,35 @@ void ActionStrategy()
             {
                 if (cur_RR >= MAX_RR) Raise(max_raise);
                 else if (cur_RR >= MIN_RR) Call();
-                else Fold();
+                else
+                {
+                    if (win_prob >= 0.75)
+                    {
+                        Call();
+                    }
+                    else
+                    {
+                        bool positive = false;
+                        for (size_t i = 0; i < g_current_inquireinfo.size();++i)
+                        {
+                            int pid = g_current_inquireinfo[i].m_pid;
+                            string action = g_current_inquireinfo[i].m_action;
+                            if (pid != g_PID && action != "fold" &&  g_PlayerBehavior[pid].m_handcardType <= g_InitialHandcardType)
+                            {
+                                positive = true;
+                            }
+                        }
+
+                        if (positive)
+                        {
+                            Fold();
+                        }
+                        else
+                        {
+                            Call();
+                        }
+                    }
+                }
             }
         }
         // straight
@@ -1079,7 +1189,31 @@ void ActionStrategy()
         {
             if (cur_RR >= MAX_RR) Raise(max_raise);
             else if (cur_RR >= MIN_RR) Call();
-            else Fold();
+            else
+            {
+                
+                bool positive = false;
+                for (size_t i = 0; i < g_current_inquireinfo.size();++i)
+                {
+                    int pid = g_current_inquireinfo[i].m_pid;
+                    string action = g_current_inquireinfo[i].m_action;
+                    if (pid != g_PID && action != "fold" &&  g_PlayerBehavior[pid].m_handcardType <= g_InitialHandcardType)
+                    {
+                        positive = true;
+                    }
+                }
+
+                if (positive)
+                {
+                    Fold();
+                }
+                else
+                {
+                    Call();
+                }
+
+
+            }
         }
 
         /** Case 2: Has three of a kind **/
@@ -1102,7 +1236,29 @@ void ActionStrategy()
             {
                 if (cur_RR >= MAX_RR) Raise(max_raise);
                 else if (cur_RR >= MIN_RR) Call();
-                else Fold();
+                else
+                {
+                        bool positive = false;
+                        for (size_t i = 0; i < g_current_inquireinfo.size();++i)
+                        {
+                            int pid = g_current_inquireinfo[i].m_pid;
+                            string action = g_current_inquireinfo[i].m_action;
+                            if (pid != g_PID && action != "fold" &&  g_PlayerBehavior[pid].m_handcardType <= g_InitialHandcardType)
+                            {
+                                positive = true;
+                            }
+                        }
+
+                        if (positive)
+                        {
+                            Fold();
+                        }
+                        else
+                        {
+                            Call();
+                        }
+                    
+                }
             }
         }
 
@@ -1112,7 +1268,29 @@ void ActionStrategy()
         {
             if (cur_RR >= MAX_RR) Raise(max_raise);
             else if (cur_RR >= MIN_RR) Call();
-            else Fold();
+            else
+            {
+                
+                        bool positive = false;
+                        for (size_t i = 0; i < g_current_inquireinfo.size();++i)
+                        {
+                            int pid = g_current_inquireinfo[i].m_pid;
+                            string action = g_current_inquireinfo[i].m_action;
+                            if (pid != g_PID && action != "fold" &&  g_PlayerBehavior[pid].m_handcardType <= g_InitialHandcardType)
+                            {
+                                positive = true;
+                            }
+                        }
+
+                        if (positive)
+                        {
+                            Fold();
+                        }
+                        else
+                        {
+                            Call();
+                        }
+            }
         
         }
         // Flush Draw 
@@ -1124,13 +1302,57 @@ void ActionStrategy()
             {
                 double r = GetRandomNumber();
                 if (r <= 0.8) Call();
-                else Fold();
+                else
+                {
+                    
+                        bool positive = false;
+                        for (size_t i = 0; i < g_current_inquireinfo.size();++i)
+                        {
+                            int pid = g_current_inquireinfo[i].m_pid;
+                            string action = g_current_inquireinfo[i].m_action;
+                            if (pid != g_PID && action != "fold" &&  g_PlayerBehavior[pid].m_handcardType <= g_InitialHandcardType)
+                            {
+                                positive = true;
+                            }
+                        }
+
+                        if (positive)
+                        {
+                            Fold();
+                        }
+                        else
+                        {
+                            Call();
+                        }
+                }
             }
             else
             {
                 if (cur_RR >= MAX_RR) Raise(max_raise);
                 else if (cur_RR >= MIN_RR) Call();
-                else Fold();
+                else
+                {
+                    
+                        bool positive = false;
+                        for (size_t i = 0; i < g_current_inquireinfo.size();++i)
+                        {
+                            int pid = g_current_inquireinfo[i].m_pid;
+                            string action = g_current_inquireinfo[i].m_action;
+                            if (pid != g_PID && action != "fold" &&  g_PlayerBehavior[pid].m_handcardType <= g_InitialHandcardType)
+                            {
+                                positive = true;
+                            }
+                        }
+
+                        if (positive)
+                        {
+                            Fold();
+                        }
+                        else
+                        {
+                            Call();
+                        }
+                }
             }
         }
         // Straight Draw
@@ -1138,7 +1360,29 @@ void ActionStrategy()
         {
             if (cur_RR >= MAX_RR) Raise(max_raise);
             else if (cur_RR >= MIN_RR) Call();
-            else Fold();
+            else
+            {
+                
+                        bool positive = false;
+                        for (size_t i = 0; i < g_current_inquireinfo.size();++i)
+                        {
+                            int pid = g_current_inquireinfo[i].m_pid;
+                            string action = g_current_inquireinfo[i].m_action;
+                            if (pid != g_PID && action != "fold" &&  g_PlayerBehavior[pid].m_handcardType <= g_InitialHandcardType)
+                            {
+                                positive = true;
+                            }
+                        }
+
+                        if (positive)
+                        {
+                            Fold();
+                        }
+                        else
+                        {
+                            Call();
+                        }
+            }
         }
         /** Case 4: Has a Pair **/
         else if (v[3].m_point == v[4].m_point)
@@ -1156,7 +1400,29 @@ void ActionStrategy()
             {
                 if (cur_RR >= MAX_RR) Raise(max_raise);
                 else if (cur_RR >= MIN_RR) Call();
-                else Fold();
+                else
+                {
+                    
+                        bool positive = false;
+                        for (size_t i = 0; i < g_current_inquireinfo.size();++i)
+                        {
+                            int pid = g_current_inquireinfo[i].m_pid;
+                            string action = g_current_inquireinfo[i].m_action;
+                            if (pid != g_PID && action != "fold" &&  g_PlayerBehavior[pid].m_handcardType <= g_InitialHandcardType)
+                            {
+                                positive = true;
+                            }
+                        }
+
+                        if (positive)
+                        {
+                            Fold();
+                        }
+                        else
+                        {
+                            Call();
+                        }
+                }
             }
         }
         /** Case 5: nothing in common cards, high card in hand **/
@@ -1172,15 +1438,60 @@ void ActionStrategy()
             {
                 if (cur_RR >= MAX_RR) Raise(max_raise);
                 else if (cur_RR >= MIN_RR) Call();
-                else Fold();
+                else
+                {
+                
+                        bool positive = false;
+                        for (size_t i = 0; i < g_current_inquireinfo.size();++i)
+                        {
+                            int pid = g_current_inquireinfo[i].m_pid;
+                            string action = g_current_inquireinfo[i].m_action;
+                            if (pid != g_PID && action != "fold" &&  g_PlayerBehavior[pid].m_handcardType <= g_InitialHandcardType)
+                            {
+                                positive = true;
+                            }
+                        }
+
+                        if (positive)
+                        {
+                            Fold();
+                        }
+                        else
+                        {
+                            Call();
+                        }
+                }
             }
         }
         else
         {
             if (cur_RR >= MAX_RR) Raise(max_raise);
             else if (cur_RR >= MIN_RR) Call();
-            else Fold();
+            else
+            {
+                
+                        bool positive = false;
+                        for (size_t i = 0; i < g_current_inquireinfo.size();++i)
+                        {
+                            int pid = g_current_inquireinfo[i].m_pid;
+                            string action = g_current_inquireinfo[i].m_action;
+                            if (pid != g_PID && action != "fold" &&  g_PlayerBehavior[pid].m_handcardType <= g_InitialHandcardType)
+                            {
+                                positive = true;
+                            }
+                        }
+
+                        if (positive)
+                        {
+                            Fold();
+                        }
+                        else
+                        {
+                            Call();
+                        }
+            }
         }
+        return;
     }
     /********* turn card round *******/
     else if (g_current_common_cards_num == 4)
@@ -1188,7 +1499,29 @@ void ActionStrategy()
         g_turn_bet_cnt++;        
         
         double win_prob = WinProbabilityInTurn();
-       // double win_prob = 0.8;
+
+        bool hasPositive = false;
+        for(size_t i = 0; i < g_current_inquireinfo.size(); ++i)
+        {
+            int pid = g_current_inquireinfo[i].m_pid;
+            string action = g_current_inquireinfo[i].m_action;
+            double playertype = g_PlayerBehavior[pid].m_handcardType;
+            double mytype = g_PlayerBehavior[g_PID].m_handcardType;
+            if (pid != g_PID && action != "action" && playertype < mytype)
+            {
+                hasPositive = true;
+            } 
+        }
+
+        if (hasPositive == true)
+        {
+            win_prob -= 0.1;
+        }
+        else
+        {
+            win_prob += 0.2;
+        }
+
         double max_bet = GetMaxbetInCurrentInquireInfo();
         double pot = g_current_inquire_totalpot; 
         double return_prob = double(max_bet) / (double)(max_bet + pot);
@@ -1214,7 +1547,6 @@ void ActionStrategy()
             Fold();
         }
         
-        //Call();
     }
     /********* river card round *********/
     else if (g_current_common_cards_num == 5)
@@ -1222,6 +1554,32 @@ void ActionStrategy()
         g_river_bet_cnt++;        
         
         double win_prob = WinProbabilityInRiver();
+
+        bool hasPositive = false;
+        for(size_t i = 0; i < g_current_inquireinfo.size(); ++i)
+        {
+            int pid = g_current_inquireinfo[i].m_pid;
+            string action = g_current_inquireinfo[i].m_action;
+            double playertype = g_PlayerBehavior[pid].m_handcardType;
+            double mytype = g_PlayerBehavior[g_PID].m_handcardType;
+            if (pid != g_PID && action != "action" && playertype < mytype)
+            {
+                hasPositive = true;
+            } 
+        }
+
+        if (hasPositive == true)
+        {
+            win_prob -= 0.1;
+        }
+        else
+        {
+            win_prob += 0.2;
+        }
+        
+        
+            
+
         double max_bet = GetMaxbetInCurrentInquireInfo();
         double pot = g_current_inquire_totalpot; 
         double return_prob = double(max_bet) / (double)(max_bet + pot);
@@ -1295,6 +1653,11 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
             g_seatinfo.push_back(tmpseat);
             g_PID2Index[pid] = tmpIndex++;
 
+            if (g_PlayerBehavior.find(pid) == g_PlayerBehavior.end())
+            {
+                g_PlayerBehavior[pid].m_handcardType = g_InitialHandcardType;
+            }
+
 
             // read small blind line
             getline(iss, line);
@@ -1308,6 +1671,13 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
             tmpseat.m_money = money;
             g_seatinfo.push_back(tmpseat);
             g_PID2Index[pid] = tmpIndex++;
+
+
+            if (g_PlayerBehavior.find(pid) == g_PlayerBehavior.end())
+            {
+                g_PlayerBehavior[pid].m_handcardType = g_InitialHandcardType;
+            }
+
 
             // read next lines if any 
             while (1)
@@ -1332,6 +1702,11 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
                     g_seatinfo.push_back(tmpseat);
                     g_PID2Index[pid] = tmpIndex++;
 
+                    if (g_PlayerBehavior.find(pid) == g_PlayerBehavior.end())
+                    {
+                        g_PlayerBehavior[pid].m_handcardType = g_InitialHandcardType;
+                    }
+
                 }
                 else
                 {
@@ -1345,6 +1720,12 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
                     tmpseat.m_money = money;
                     g_seatinfo.push_back(tmpseat);
                     g_PID2Index[pid] = tmpIndex++;
+
+                    if (g_PlayerBehavior.find(pid) == g_PlayerBehavior.end())
+                    {
+                        g_PlayerBehavior[pid].m_handcardType = g_InitialHandcardType;
+                    }
+
                 }
             }
 
@@ -1355,6 +1736,7 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
         else if (line == "game-over ")
         {
             
+            g_PlayerBehavior.clear();            
             close(sockfd);
             return 1;
         }
@@ -1579,6 +1961,22 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
                     line_iss.str(line);
                     line_iss >> rank_str >> pid >> color1 >> point1 >> color2 >> point2 >> nut_hand;
 
+                    MyCard card1, card2;
+                    card1.m_point = toPoint(point1);
+                    card1.m_color = toMyColor(color1);
+                    card2.m_point = toPoint(point2);
+                    card2.m_color = toMyColor(color2);
+                    
+                    int handcardtype = InitialHandCardsType(card1, card2);
+                    if (g_PlayerBehavior.find(pid) == g_PlayerBehavior.end())
+                    {
+                        g_PlayerBehavior[pid].m_handcardType = g_InitialHandcardType * g_alpha + (double)handcardtype * g_beta;
+                    }
+                    else
+                    {
+                        g_PlayerBehavior[pid].m_handcardType = g_PlayerBehavior[pid].m_handcardType * g_alpha + (double)handcardtype * g_beta;
+                    }
+                    
                 }
             }
         }

@@ -70,4 +70,11 @@ struct SeatInfo
     }
 };
 
+
+struct PlayerType
+{
+    double m_handcardType;
+    
+};
+
 #endif // GLOBAL_STRUCT_INCLUDE_H_
