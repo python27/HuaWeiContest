@@ -6,6 +6,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
+#include <math.h>
 #include <unistd.h>
 #include <errno.h>
 #include <assert.h>
@@ -33,6 +34,11 @@ extern MyCard g_player_cards[2];
 extern int g_PID;
 const double MAX_RR = 1.6;
 const double MIN_RR = 1.0;
+
+int g_initial_bet_cnt = 0;
+int g_flop_bet_cnt = 0;
+int g_turn_bet_cnt = 0;
+int g_river_bet_cnt = 0;
 /* global variable end */
 
 
@@ -826,6 +832,8 @@ void ActionStrategy()
     /******** preflop, hand cards *********/
     if (g_current_common_cards_num == 0)
     {
+        g_initial_bet_cnt++;
+
         int card1 = g_player_cards[0].m_point;
         int card2 = g_player_cards[1].m_point;
         MyColor color1 = g_player_cards[0].m_color;
@@ -839,9 +847,16 @@ void ActionStrategy()
              || (card1 == 12 && card2 == 14 && color1 == color2) // AQs 
            )
         {
-            int max_bet = GetMaxbetInCurrentInquireInfo();
-            int raise_num = 5 * max_bet;
-            Raise(raise_num);
+            if (g_initial_bet_cnt == 1)
+            {
+                int max_bet = GetMaxbetInCurrentInquireInfo();
+                int raise_num = 5 * max_bet;
+                Raise(raise_num);
+            }
+            else
+            {
+                Call();
+            }   
         }
         // group 2: strong
         else if (    (card1 == 11 && card2 == 11) // JJ
@@ -853,9 +868,17 @@ void ActionStrategy()
                   || (card1 == 12 && card2 == 13 && color1 == color2) // KQs
                 )
         {
-            int max_bet = GetMaxbetInCurrentInquireInfo();
-            int raise_num = 3 * max_bet;
-            Raise(raise_num);
+
+            if (g_initial_bet_cnt == 1)
+            {
+                int max_bet = GetMaxbetInCurrentInquireInfo();
+                int raise_num = 3 * max_bet;
+                Raise(raise_num);
+            }
+            else
+            {
+                Call();
+            }
         }
         // group 3: good
         else if (    (card1 == 9 && card2 == 9)     // 99
@@ -864,9 +887,17 @@ void ActionStrategy()
                   || (card1 == 10 && card2 == 13 && color1 == color2) // KTs
                 )
         {
-            int max_bet = GetMaxbetInCurrentInquireInfo();
-            int raise_num = 1.2 * max_bet;
-            Raise(raise_num);
+
+            if (g_initial_bet_cnt == 1)
+            {
+                int max_bet = GetMaxbetInCurrentInquireInfo();
+                int raise_num = 1.2 * max_bet;
+                Raise(raise_num);
+            }
+            else
+            {
+                Call();
+            }
         }
         // group 4:
         else if (   (card1 == 8  && card2 == 14 && color1 == color2) // A8s
@@ -962,6 +993,8 @@ void ActionStrategy()
     /********* 3 flop cards round ********/
     else if (g_current_common_cards_num == 3)
     {
+        g_flop_bet_cnt++;        
+
         vector<MyCard> v(g_common_cards, g_common_cards + 3);
         v.push_back(g_player_cards[0]);
         v.push_back(g_player_cards[1]);
@@ -974,28 +1007,44 @@ void ActionStrategy()
 
         double cur_RR = win_prob / return_prob;
         double max_raise = pot / double((double)MAX_RR / win_prob - 1.0);
+        max_raise = min(max_raise, pot / 2);
+        max_raise = min(max_raise, 2 * max_bet);
 
         /** first case: complete **/
         NUT_HAND cur_cardtype =  GetHandCardType(v);
         // straight flush
         if (STRAIGHT_FLUSH == cur_cardtype)
         {
-            int max_bet = GetMaxbetInCurrentInquireInfo();
-            Raise(5 * max_bet);
+            if (g_flop_bet_cnt == 1)
+            {
+                int max_bet = GetMaxbetInCurrentInquireInfo();
+                Raise(5 * max_bet);
+            }
+            else
+            {
+                Call();
+            }
         }
         // Quads
         else if (FOUR_OF_A_KIND == cur_cardtype)
         {
-             if (HasRaiseInCurrentInquireInfo())
-             {
-                int max_bet = GetMaxbetInCurrentInquireInfo();
-                Raise(4 * max_bet);
-             }
-             else
-             {
-                int max_bet = GetMaxbetInCurrentInquireInfo();
-                Raise(3 * max_bet);
-             }
+            if (g_flop_bet_cnt == 1)
+            {
+                 if (HasRaiseInCurrentInquireInfo())
+                 {
+                    int max_bet = GetMaxbetInCurrentInquireInfo();
+                    Raise(4 * max_bet);
+                 }
+                 else
+                 {
+                    int max_bet = GetMaxbetInCurrentInquireInfo();
+                    Raise(3 * max_bet);
+                 }
+            }
+            else
+            {
+                Call();
+            }
         }
         // Full-House
         else if (FULL_HOUSE == cur_cardtype)
@@ -1008,8 +1057,15 @@ void ActionStrategy()
         {
             if (v[4].m_point == 14)
             {
-                int max_bet = GetMaxbetInCurrentInquireInfo();
-                Raise(1.1 * max_bet);
+                if (g_flop_bet_cnt == 1)
+                {
+                    int max_bet = GetMaxbetInCurrentInquireInfo();
+                    Raise(1.1 * max_bet);
+                }
+                else
+                {
+                    Call();
+                }
             }
             else
             {
@@ -1032,8 +1088,15 @@ void ActionStrategy()
             // has a pair in hand + 1 common card
             if (g_player_cards[0].m_point == g_player_cards[1].m_point)
             {
-                int max_bet = GetMaxbetInCurrentInquireInfo();
-                Raise(6 * max_bet / 5);
+                if (g_flop_bet_cnt == 1)
+                {
+                    int max_bet = GetMaxbetInCurrentInquireInfo();
+                    Raise(6 * max_bet / 5);
+                }
+                else
+                {
+                    Call();
+                }
             }
             else
             {
@@ -1122,6 +1185,7 @@ void ActionStrategy()
     /********* turn card round *******/
     else if (g_current_common_cards_num == 4)
     {
+        g_turn_bet_cnt++;        
         
         double win_prob = WinProbabilityInTurn();
        // double win_prob = 0.8;
@@ -1131,6 +1195,11 @@ void ActionStrategy()
 
         double cur_RR = win_prob / return_prob;
         double max_raise = pot / double((double)MAX_RR / win_prob - 1.0);
+        max_raise = min(max_raise, pot / 2);
+
+        // max_raise multiply a coefficient 
+        double alpha = 1.0 / (double)pow(2.0, (double)(g_turn_bet_cnt));
+        max_raise = alpha * max_raise;
 
         if (cur_RR >= MAX_RR)
         {
@@ -1150,6 +1219,7 @@ void ActionStrategy()
     /********* river card round *********/
     else if (g_current_common_cards_num == 5)
     {
+        g_river_bet_cnt++;        
         
         double win_prob = WinProbabilityInRiver();
         double max_bet = GetMaxbetInCurrentInquireInfo();
@@ -1158,7 +1228,11 @@ void ActionStrategy()
 
         double cur_RR = win_prob / return_prob;
         double max_raise = pot / double((double)MAX_RR / win_prob - 1.0);
-
+        
+        max_raise = min(max_raise, pot / 2);
+        double alpha = 1.0 / (double)pow(2.0, double(g_river_bet_cnt-1));
+        max_raise = alpha * max_raise;
+        
         if (cur_RR >= MAX_RR)
         {
             Raise(max_raise);
@@ -1194,6 +1268,12 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
             int pid;
             int jetton;
             int money;
+
+            // clear all bet round num info
+            g_initial_bet_cnt = 0;
+            g_flop_bet_cnt = 0;
+            g_turn_bet_cnt = 0;
+            g_river_bet_cnt = 0;
 
             // clear previous seat info
             g_seatinfo.clear();
