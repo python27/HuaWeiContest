@@ -1098,7 +1098,7 @@ void ActionStrategy()
             {
                 Fold();
             }
-            goto flop_round_return;
+            return;
         }
 
 
@@ -1512,7 +1512,6 @@ void ActionStrategy()
             }
         }
 
-flop_round_return:
 
         return;
     }
@@ -1534,7 +1533,7 @@ flop_round_return:
             {
                 Fold();
             }
-            goto turn_round_return;
+            return;
         }
 
 
@@ -1586,7 +1585,6 @@ flop_round_return:
         {
             Fold();
         }
-turn_round_return:
         
     }
     /********* river card round *********/
@@ -1607,7 +1605,7 @@ turn_round_return:
             {
                 Fold();
             }
-            goto river_round_return;
+            return;
         }
 
 
@@ -1662,10 +1660,6 @@ turn_round_return:
             Fold();
         }
         
-        
-river_round_return:
-
-
     }
 
     return;
