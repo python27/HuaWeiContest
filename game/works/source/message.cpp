@@ -42,6 +42,9 @@ int g_river_bet_cnt = 0;
 const int g_InitialHandcardType = 3;
 const double g_alpha = 0.8;
 const double g_beta = 0.2;
+int g_my_current_money = 0;                 // 我的当前资金
+int g_my_current_jetton = 0;                // 我的当前筹码
+const int g_MIN_PROTECT_JETTON = 1500;      // 最少保护筹码
 /* global variable end */
 
 
@@ -1083,14 +1086,31 @@ void ActionStrategy()
         sort(v.begin(), v.end());
 
         double win_prob = WinProbabilityInFlop();
+
+        // 筹码保护措施
+        if (g_my_current_money + g_my_current_jetton <= g_MIN_PROTECT_JETTON)
+        {
+            if (win_prob >= 0.8)
+            {
+                Call();
+            }
+            else
+            {
+                Fold();
+            }
+            goto flop_round_return;
+        }
+
+
         double max_bet = GetMaxbetInCurrentInquireInfo();
         double pot = g_current_inquire_totalpot; 
         double return_prob = double(max_bet) / (double)(max_bet + pot);
 
         double cur_RR = win_prob / return_prob;
-        double max_raise = pot / double((double)MAX_RR / win_prob - 1.0);
+        double max_raise = pot / double((double)MAX_RR / win_prob - 1.0) - max_bet;
         max_raise = min(max_raise, pot / 2);
         max_raise = min(max_raise, 2 * max_bet);
+        if (max_raise <= 0) max_raise = 0;
 
         /** first case: complete **/
         NUT_HAND cur_cardtype =  GetHandCardType(v);
@@ -1491,6 +1511,9 @@ void ActionStrategy()
                         }
             }
         }
+
+flop_round_return:
+
         return;
     }
     /********* turn card round *******/
@@ -1499,6 +1522,22 @@ void ActionStrategy()
         g_turn_bet_cnt++;        
         
         double win_prob = WinProbabilityInTurn();
+        
+        // 筹码保护措施
+        if (g_my_current_money + g_my_current_jetton <= g_MIN_PROTECT_JETTON)
+        {
+            if (win_prob >= 0.8)
+            {
+                Call();
+            }
+            else
+            {
+                Fold();
+            }
+            goto turn_round_return;
+        }
+
+
 
         bool hasPositive = false;
         for(size_t i = 0; i < g_current_inquireinfo.size(); ++i)
@@ -1527,8 +1566,9 @@ void ActionStrategy()
         double return_prob = double(max_bet) / (double)(max_bet + pot);
 
         double cur_RR = win_prob / return_prob;
-        double max_raise = pot / double((double)MAX_RR / win_prob - 1.0);
+        double max_raise = pot / double((double)MAX_RR / win_prob - 1.0) - max_bet;
         max_raise = min(max_raise, pot / 2);
+        if (max_raise <= 0) max_raise = 0;
 
         // max_raise multiply a coefficient 
         double alpha = 1.0 / (double)pow(2.0, (double)(g_turn_bet_cnt));
@@ -1546,6 +1586,7 @@ void ActionStrategy()
         {
             Fold();
         }
+turn_round_return:
         
     }
     /********* river card round *********/
@@ -1554,6 +1595,22 @@ void ActionStrategy()
         g_river_bet_cnt++;        
         
         double win_prob = WinProbabilityInRiver();
+
+        // 筹码保护措施
+        if (g_my_current_money + g_my_current_jetton <= g_MIN_PROTECT_JETTON)
+        {
+            if (win_prob >= 0.8)
+            {
+                Call();
+            }
+            else
+            {
+                Fold();
+            }
+            goto river_round_return;
+        }
+
+
 
         bool hasPositive = false;
         for(size_t i = 0; i < g_current_inquireinfo.size(); ++i)
@@ -1585,9 +1642,10 @@ void ActionStrategy()
         double return_prob = double(max_bet) / (double)(max_bet + pot);
 
         double cur_RR = win_prob / return_prob;
-        double max_raise = pot / double((double)MAX_RR / win_prob - 1.0);
+        double max_raise = pot / double((double)MAX_RR / win_prob - 1.0) - max_bet;
         
         max_raise = min(max_raise, pot / 2);
+        if (max_raise <= 0) max_raise = 0;
         double alpha = 1.0 / (double)pow(2.0, double(g_river_bet_cnt-1));
         max_raise = alpha * max_raise;
         
@@ -1604,7 +1662,10 @@ void ActionStrategy()
             Fold();
         }
         
-        //Call();
+        
+river_round_return:
+
+
     }
 
     return;
@@ -1632,6 +1693,8 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
             g_flop_bet_cnt = 0;
             g_turn_bet_cnt = 0;
             g_river_bet_cnt = 0;
+            g_my_current_money = 0;
+            g_my_current_jetton = 0;
 
             // clear previous seat info
             g_seatinfo.clear();
@@ -1658,6 +1721,12 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
                 g_PlayerBehavior[pid].m_handcardType = g_InitialHandcardType;
             }
 
+            if (pid == g_PID)
+            {
+                g_my_current_money = money;
+                g_my_current_jetton = jetton;
+            }
+
 
             // read small blind line
             getline(iss, line);
@@ -1676,6 +1745,12 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
             if (g_PlayerBehavior.find(pid) == g_PlayerBehavior.end())
             {
                 g_PlayerBehavior[pid].m_handcardType = g_InitialHandcardType;
+            }
+
+            if (pid == g_PID)
+            {
+                g_my_current_money = money;
+                g_my_current_jetton = jetton;
             }
 
 
@@ -1707,6 +1782,12 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
                         g_PlayerBehavior[pid].m_handcardType = g_InitialHandcardType;
                     }
 
+                    if (pid == g_PID)
+                    {
+                        g_my_current_money = money;
+                        g_my_current_jetton = jetton;
+                    }
+
                 }
                 else
                 {
@@ -1724,6 +1805,12 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
                     if (g_PlayerBehavior.find(pid) == g_PlayerBehavior.end())
                     {
                         g_PlayerBehavior[pid].m_handcardType = g_InitialHandcardType;
+                    }
+
+                    if (pid == g_PID)
+                    {
+                        g_my_current_money = money;
+                        g_my_current_jetton = jetton;
                     }
 
                 }
@@ -1811,6 +1898,12 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
                     line_iss.clear();
                     line_iss.str(line);
                     line_iss >> pid >> jetton >> money >> bet >> action;
+
+                    if (pid == g_PID)
+                    {
+                        g_my_current_money = money;
+                        g_my_current_jetton = jetton;
+                    }
 
                     // store current inquire info
                     InquireInfo tmp;
