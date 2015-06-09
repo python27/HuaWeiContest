@@ -1507,7 +1507,7 @@ void ActionStrategy()
             string action = g_current_inquireinfo[i].m_action;
             double playertype = g_PlayerBehavior[pid].m_handcardType;
             double mytype = g_PlayerBehavior[g_PID].m_handcardType;
-            if (pid != g_PID && action != "action" && playertype < mytype)
+            if (pid != g_PID && action != "fold" && playertype < mytype)
             {
                 hasPositive = true;
             } 
@@ -1562,7 +1562,7 @@ void ActionStrategy()
             string action = g_current_inquireinfo[i].m_action;
             double playertype = g_PlayerBehavior[pid].m_handcardType;
             double mytype = g_PlayerBehavior[g_PID].m_handcardType;
-            if (pid != g_PID && action != "action" && playertype < mytype)
+            if (pid != g_PID && action != "fold" && playertype < mytype)
             {
                 hasPositive = true;
             } 
