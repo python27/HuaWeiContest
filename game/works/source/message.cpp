@@ -32,7 +32,7 @@ extern MyCard g_common_cards[5];
 extern int g_current_common_cards_num;
 extern MyCard g_player_cards[2];
 extern int g_PID;
-const double MAX_RR = 1.5;
+const double MAX_RR = 1.3;
 const double MIN_RR = 1.0;
 
 int g_initial_bet_cnt = 0;
@@ -1088,7 +1088,8 @@ void ActionStrategy()
         double win_prob = WinProbabilityInFlop();
 
         // 筹码保护措施
-        if (g_my_current_money + g_my_current_jetton <= g_MIN_PROTECT_JETTON)
+        /*
+        if (g_flop_bet_cnt == 1 && g_my_current_money + g_my_current_jetton <= g_MIN_PROTECT_JETTON)
         {
             if (win_prob >= 0.8)
             {
@@ -1100,6 +1101,7 @@ void ActionStrategy()
             }
             return;
         }
+        */
 
 
         double max_bet = GetMaxbetInCurrentInquireInfo();
@@ -1523,6 +1525,7 @@ void ActionStrategy()
         double win_prob = WinProbabilityInTurn();
         
         // 筹码保护措施
+        /*
         if (g_my_current_money + g_my_current_jetton <= g_MIN_PROTECT_JETTON)
         {
             if (win_prob >= 0.8)
@@ -1535,6 +1538,7 @@ void ActionStrategy()
             }
             return;
         }
+        */
 
 
 
@@ -1595,6 +1599,7 @@ void ActionStrategy()
         double win_prob = WinProbabilityInRiver();
 
         // 筹码保护措施
+        /*
         if (g_my_current_money + g_my_current_jetton <= g_MIN_PROTECT_JETTON)
         {
             if (win_prob >= 0.8)
@@ -1607,6 +1612,7 @@ void ActionStrategy()
             }
             return;
         }
+        */
 
 
 
