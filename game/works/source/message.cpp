@@ -45,6 +45,7 @@ const double g_beta = 0.2;
 int g_my_current_money = 0;                 // 我的当前资金
 int g_my_current_jetton = 0;                // 我的当前筹码
 const int g_MIN_PROTECT_JETTON = 1500;      // 最少保护筹码
+bool g_protected_jetton_flag = false;
 /* global variable end */
 
 
@@ -1088,7 +1089,7 @@ void ActionStrategy()
         double win_prob = WinProbabilityInFlop();
 
         // 筹码保护措施
-        /*
+        
         if (g_flop_bet_cnt == 1 && g_my_current_money + g_my_current_jetton <= g_MIN_PROTECT_JETTON)
         {
             if (win_prob >= 0.8)
@@ -1101,7 +1102,7 @@ void ActionStrategy()
             }
             return;
         }
-        */
+        
 
 
         double max_bet = GetMaxbetInCurrentInquireInfo();
@@ -1525,7 +1526,7 @@ void ActionStrategy()
         double win_prob = WinProbabilityInTurn();
         
         // 筹码保护措施
-        /*
+        
         if (g_my_current_money + g_my_current_jetton <= g_MIN_PROTECT_JETTON)
         {
             if (win_prob >= 0.8)
@@ -1538,7 +1539,7 @@ void ActionStrategy()
             }
             return;
         }
-        */
+        
 
 
 
@@ -1599,7 +1600,7 @@ void ActionStrategy()
         double win_prob = WinProbabilityInRiver();
 
         // 筹码保护措施
-        /*
+        
         if (g_my_current_money + g_my_current_jetton <= g_MIN_PROTECT_JETTON)
         {
             if (win_prob >= 0.8)
@@ -1612,7 +1613,7 @@ void ActionStrategy()
             }
             return;
         }
-        */
+        
 
 
 
