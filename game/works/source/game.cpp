@@ -114,11 +114,11 @@ int main(int argc, char *argv[])
             break;
         }
 
-        printf("\n\n>>>>>>>>>>>> Received Data start <<<<<<<<<<<<<<\n");
-        printf("%s", server_msg);
-        printf(">>>>>>>>>>>> Received Data end <<<<<<<<<<<<<<\n");
+        //printf("\n\n>>>>>>>>>>>> Received Data start <<<<<<<<<<<<<<\n");
+        //printf("%s", server_msg);
+        //printf(">>>>>>>>>>>> Received Data end <<<<<<<<<<<<<<\n");
 
-        printf("I am handling message:\n");
+        //printf("I am handling message:\n");
         
         process_msg_flag = ProcessReceivedMsg(server_msg);
         

@@ -40,12 +40,13 @@ int g_flop_bet_cnt = 0;
 int g_turn_bet_cnt = 0;
 int g_river_bet_cnt = 0;
 const int g_InitialHandcardType = 3;
-const double g_alpha = 0.8;
-const double g_beta = 0.2;
+const double g_alpha = 0.7;
+const double g_beta = 0.3;
 int g_my_current_money = 0;                 // 我的当前资金
 int g_my_current_jetton = 0;                // 我的当前筹码
 const int g_MIN_PROTECT_JETTON = 1500;      // 最少保护筹码
-bool g_protected_jetton_flag = false;
+bool g_jetton_protection_flag = false;
+const double g_win_prob_decay_coefficient = 0.95;   // 胜率衰减因子
 /* global variable end */
 
 
@@ -1089,8 +1090,23 @@ void ActionStrategy()
         double win_prob = WinProbabilityInFlop();
 
         // 筹码保护措施
-        
+        /*
         if (g_flop_bet_cnt == 1 && g_my_current_money + g_my_current_jetton <= g_MIN_PROTECT_JETTON)
+        {
+            if (win_prob >= 0.8)
+            {
+                Call();
+            }
+            else
+            {
+                Fold();
+            }
+            return;
+        }
+        */
+
+        // 新的筹码保护措施，只有当赢率大于0.8时才Call，否则Fold，从不Raise
+        if (g_jetton_protection_flag)
         {
             if (win_prob >= 0.8)
             {
@@ -1526,7 +1542,7 @@ void ActionStrategy()
         double win_prob = WinProbabilityInTurn();
         
         // 筹码保护措施
-        
+        /*
         if (g_my_current_money + g_my_current_jetton <= g_MIN_PROTECT_JETTON)
         {
             if (win_prob >= 0.8)
@@ -1539,23 +1555,57 @@ void ActionStrategy()
             }
             return;
         }
-        
+        */
+
+        // 新的筹码保护措施，只有当赢率大于0.8时才Call，否则Fold，从不Raise
+        if (g_jetton_protection_flag)
+        {
+            if (win_prob >= 0.8)
+            {
+                Call();
+            }
+            else
+            {
+                Fold();
+            }
+            return;
+        }      
 
 
 
         bool hasPositive = false;
+        double average_other_playertype = 0.0;
+        int n_other_playertype = 0;
+        double mytype = g_PlayerBehavior[g_PID].m_handcardType;
         for(size_t i = 0; i < g_current_inquireinfo.size(); ++i)
         {
             int pid = g_current_inquireinfo[i].m_pid;
             string action = g_current_inquireinfo[i].m_action;
             double playertype = g_PlayerBehavior[pid].m_handcardType;
-            double mytype = g_PlayerBehavior[g_PID].m_handcardType;
+            //double mytype = g_PlayerBehavior[g_PID].m_handcardType;
+            /*
             if (pid != g_PID && action != "fold" && playertype < mytype)
             {
                 hasPositive = true;
+            }
+            */
+            if (action != "fold")
+            {
+                average_other_playertype += playertype;
+                n_other_playertype++;
             } 
         }
+        
+        if (n_other_playertype == 0)
+        {
+            average_other_playertype = mytype;
+        }
+        else
+        {
+            average_other_playertype /= n_other_playertype;
+        }
 
+        /*
         if (hasPositive == true)
         {
             win_prob -= 0.1;
@@ -1564,6 +1614,23 @@ void ActionStrategy()
         {
             win_prob += 0.2;
         }
+        */
+
+        if (average_other_playertype < mytype)
+        {
+            win_prob -= 0.1;
+        }
+        else
+        {
+            win_prob += 0.05;        
+        }
+
+        win_prob = win_prob * ( pow(g_win_prob_decay_coefficient, double(g_turn_bet_cnt-1)) ); 
+
+
+
+
+
 
         double max_bet = GetMaxbetInCurrentInquireInfo();
         double pot = g_current_inquire_totalpot; 
@@ -1600,7 +1667,7 @@ void ActionStrategy()
         double win_prob = WinProbabilityInRiver();
 
         // 筹码保护措施
-        
+        /*
         if (g_my_current_money + g_my_current_jetton <= g_MIN_PROTECT_JETTON)
         {
             if (win_prob >= 0.8)
@@ -1613,23 +1680,59 @@ void ActionStrategy()
             }
             return;
         }
+        */
+
+        // 新的筹码保护措施，只有当赢率大于0.8时才Call，否则Fold，从不Raise
+        if (g_jetton_protection_flag)
+        {
+            if (win_prob >= 0.8)
+            {
+                Call();
+            }
+            else
+            {
+                Fold();
+            }
+            return;
+        }   
         
 
 
 
         bool hasPositive = false;
+        double average_other_playertype = 0.0;
+        int n_other_playertype = 0;
+        double mytype = g_PlayerBehavior[g_PID].m_handcardType;
         for(size_t i = 0; i < g_current_inquireinfo.size(); ++i)
         {
             int pid = g_current_inquireinfo[i].m_pid;
             string action = g_current_inquireinfo[i].m_action;
             double playertype = g_PlayerBehavior[pid].m_handcardType;
-            double mytype = g_PlayerBehavior[g_PID].m_handcardType;
+            //double mytype = g_PlayerBehavior[g_PID].m_handcardType;
+            /*
             if (pid != g_PID && action != "fold" && playertype < mytype)
             {
                 hasPositive = true;
-            } 
+                
+            }
+            */
+           if (action != "fold")
+           {
+                average_other_playertype += playertype;
+                n_other_playertype++;
+           } 
         }
 
+        if (n_other_playertype == 0)
+        {
+            average_other_playertype = mytype;
+        }
+        else
+        {
+            average_other_playertype /= n_other_playertype++;
+        }
+
+        /*
         if (hasPositive == true)
         {
             win_prob -= 0.1;
@@ -1638,6 +1741,17 @@ void ActionStrategy()
         {
             win_prob += 0.2;
         }
+        */
+        if (average_other_playertype <= mytype)
+        {
+            win_prob -= 0.1;
+        }
+        else
+        {
+            win_prob += 0.05;        
+        }
+
+        win_prob = win_prob * ( pow(g_win_prob_decay_coefficient, double(g_river_bet_cnt-1)) );            
         
         
             
@@ -1680,7 +1794,7 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
     stringstream line_iss(line);
     while (getline(iss, line))
     {
-        /* seat info message, DONE */
+        /** seat info message, DONE **/
         if (line == "seat/ ")
         {
             string first_token;
@@ -1696,6 +1810,7 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
             g_river_bet_cnt = 0;
             g_my_current_money = 0;
             g_my_current_jetton = 0;
+            g_jetton_protection_flag = false;
 
             // clear previous seat info
             g_seatinfo.clear();
@@ -1726,6 +1841,11 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
             {
                 g_my_current_money = money;
                 g_my_current_jetton = jetton;
+                
+                if (money + jetton <= g_MIN_PROTECT_JETTON)
+                {
+                    g_jetton_protection_flag = true;
+                }
             }
 
 
@@ -1752,6 +1872,10 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
             {
                 g_my_current_money = money;
                 g_my_current_jetton = jetton;
+                if (money + jetton <= g_MIN_PROTECT_JETTON)
+                {
+                    g_jetton_protection_flag = true;
+                }
             }
 
 
@@ -1787,6 +1911,10 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
                     {
                         g_my_current_money = money;
                         g_my_current_jetton = jetton;
+                        if (money + jetton <= g_MIN_PROTECT_JETTON)
+                        {
+                            g_jetton_protection_flag = true;
+                        }
                     }
 
                 }
@@ -1812,6 +1940,11 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
                     {
                         g_my_current_money = money;
                         g_my_current_jetton = jetton;
+                        if (money + jetton <= g_MIN_PROTECT_JETTON)
+                        {
+                            g_jetton_protection_flag = true;
+                        }
+
                     }
 
                 }
@@ -1904,6 +2037,7 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
                     {
                         g_my_current_money = money;
                         g_my_current_jetton = jetton;
+                        
                     }
 
                     // store current inquire info
@@ -1931,9 +2065,9 @@ int ProcessReceivedMsg(char buffer[BUF_SIZE])
 
 
             // send action message
-            cout << "start action " << endl;
+            //cout << "start action " << endl;
             ActionStrategy();
-            cout << "end action "  << endl;
+            //cout << "end action "  << endl;
             
         }
 
